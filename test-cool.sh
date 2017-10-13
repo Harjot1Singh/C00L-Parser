@@ -2,6 +2,6 @@
 
 for file in tests/*
 do
-    echo -e "Running parser on ${file}\n"
+    echo -e "\nRunning parser on ${file}"
     python src/coolparser.py ${file}
 done
