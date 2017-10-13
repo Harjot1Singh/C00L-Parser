@@ -1,15 +1,3 @@
-(*
-   The class A2I provides integer-to-string and string-to-integer
-conversion routines.  To use these routines, either inherit them
-in the class where needed, have a dummy variable bound to
-something of type A2I, or simpl write (new A2I).method(argument).
-*)
-
-
-(*
-   c2i   Converts a 1-character string to an integer.  Aborts
-         if the string is not "0" through "9"
-*)
 class A2I {
 
      c2i(char : String) : Int {
@@ -27,9 +15,7 @@ class A2I {
         fi fi fi fi fi fi fi fi fi fi
      };
 
-(*
-   i2c is the inverse of c2i.
-*)
+
      i2c(i : Int) : String {
 	if i = 0 then "0" else
 	if i = 1 then "1" else
@@ -45,14 +31,7 @@ class A2I {
         fi fi fi fi fi fi fi fi fi fi
      };
 
-(*
-   a2i converts an ASCII string into an integer.  The empty string
-is converted to 0.  Signed and unsigned strings are handled.  The
-method aborts if the string does not represent an integer.  Very
-long strings of digits produce strange answers because of arithmetic 
-overflow.
 
-*)
      a2i(s : String) : Int {
         if s.length() = 0 then 0 else
 	if s.substr(0,1) = "-" then ~a2i_aux(s.substr(1,s.length()-1)) else
@@ -61,10 +40,7 @@ overflow.
         fi fi fi
      };
 
-(*
-  a2i_aux converts the usigned portion of the string.  As a programming
-example, this method is written iteratively.
-*)
+
      a2i_aux(s : String) : Int {
 	(let int : Int <- 0 in	
            {	
@@ -83,10 +59,7 @@ example, this method is written iteratively.
         )
      };
 
-(*
-    i2a converts an integer to a string.  Positive and negative 
-numbers are handled correctly.  
-*)
+
     i2a(i : Int) : String {
 	if i = 0 then "0" else 
         if 0 < i then i2a_aux(i) else
@@ -94,9 +67,7 @@ numbers are handled correctly.
         fi fi
     };
 	
-(*
-    i2a_aux is an example using recursion.
-*)		
+
     i2a_aux(i : Int) : String {
         if i = 0 then "" else 
 	    (let next : Int <- i / 10 in

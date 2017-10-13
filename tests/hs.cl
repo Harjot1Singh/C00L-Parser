@@ -1,5 +1,3 @@
-(* hairy  . . .*)
-
 class Foo inherits Bazz {
      a : Razz <- case self of
 		      n : Razz => (new Bar);
@@ -50,7 +48,6 @@ class Bazz inherits IO {
      doh() : Int { (let i: Int <- h in { h <- h + 1; i; } ) };
 };
 
-(* scary . . . *)
 class Main inherits IO {
   a : Bazz <- new Bazz;
   b : Foo <- new Foo;

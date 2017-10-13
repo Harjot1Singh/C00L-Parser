@@ -2,12 +2,11 @@ class Main inherits IO {
     main() : SELF_TYPE {
 	(let c : Complex <- (new Complex).init(1, 1) in
 	    {
-	        -- trivially equal (see CoolAid)
 	        if c.reflect_X() = c.reflect_0()
 	        then out_string("passed\n")
 	        else out_string("failed\n")
 	        fi;
-		-- equal
+
 	        if c.reflect_X().reflect_Y().equal(c.reflect_0())
 	        then out_string("passed\n")
 	        else out_string("failed\n")
