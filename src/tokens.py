@@ -82,8 +82,8 @@ class NewlineToken(BaseToken):
 # case-insensitive class, else, fi, if, in, inherits, let, loop, pool, then, while, case, esac, new, of
 # (?i)(class|inherits|else|fi|if|in|let|loop|pool|then|while|case|esac|new|of)
 class KeywordToken(BaseToken):
-    regex = create_insensitive_regex_group(['class', 'inherits', 'else', 'fi', 'if', 'in', 'let', 'loop', 'pool', 'then'
-                                            'while', 'case', 'esac', 'new', 'of'])
+    regex = create_insensitive_regex_group(['class', 'inherits', 'else', 'fi', 'if', 'in', 'let', 'loop', 'pool',
+                                            'then', 'while', 'case', 'esac', 'new', 'of'])
 
 
 # Token to match any of the unary operators
@@ -162,6 +162,7 @@ token_types = [StringToken, BooleanToken, ReservedToken, KeywordToken, IntegerTo
 
 # Converts a string into a list of tokens
 def tokenise(string):
+    tokens = []     # List of lexed tokens
     line = 1        # Current line number
     line_start = 0  # Line start "index", based on newlines
 
@@ -182,10 +183,12 @@ def tokenise(string):
 
         # Get the actual match
         value = match.group(name)
-        # Instantiate the token class with eval of the named match :-(
-        token = eval(name)(value, line, column)
-        print(token)
 
+        # Get the token class from the named match and instantiate it :-(
+        token_class = globals()[name]
+        token = token_class(value, line, column)
 
+        # Finally, append it
+        tokens.append(token)
 
-# TODO: Change to ordered dict? Eval is ugly
+    return tokens
