@@ -12,7 +12,7 @@ class BaseToken:
 
     # Return human-readable token with name, value, and line + column
     def __str__(self):
-        return self.__class__.__name__ + '(' + self.value + ')' + ' [' + self.line + ':' + self.column + ']'
+        return self.__class__.__name__ + '(' + self.value + ')' + ' [' + str(self.line) + ':' + str(self.column) + ']'
 
 
 # Token for a boolean value
@@ -32,7 +32,7 @@ class ReservedToken(BaseToken):
 # Letters, digits, underscores, must start with capital letter
 # [A-Z][0-9a-zA-Z_]*
 class TypeIdToken(BaseToken):
-    regex = r'[A-Z][0-9a-zA-Z]*'
+    regex = r'[A-Z][0-9a-zA-Z_]*'
 
 
 # Token for an object identifier
@@ -44,8 +44,9 @@ class ObjectIdToken(BaseToken):
 
 # Token for string
 # Anything that's not \b, \t, \n, \f
+# Strings are found in double-quotes, but we don't want to capture these
 class StringToken(BaseToken):
-    regex = r'(?!.*(\\b|\\t|\\n|\\f)).*'
+    regex = r'(?!.*(\\b|\\t|\\n|\\f))(?:").*(?:")'
 
 
 # Token for an integer value
@@ -70,6 +71,7 @@ class NewlineToken(BaseToken):
 # Token for any keywords
 # case-insensitive class, else, fi, if, in, inherits, let, loop, pool, then, while, case, esac, new, of
 # (?i)(class|inherits|else|fi|if|in|let|loop|pool|then|while|case|esac|new|of)
+# TODO: case insensivity flag here applied globally
 class KeywordToken(BaseToken):
     regex = r'(?i)(class|inherits|else|fi|if|in|let|loop|pool|then|while|case|esac|new|of)'
 
@@ -93,9 +95,9 @@ class AssignmentToken(BaseToken):
 
 
 # Token that matches any binary operators
-# (\*|\/|\+|-)
+# [+\-*/]
 class BinaryOperatorToken(BaseToken):
-    regex = r'(\*|\/|\+|-)'
+    regex = r'[+\-*/]'
 
 
 # Token to match any comparators
@@ -111,9 +113,9 @@ class UnknownToken(BaseToken):
 
 
 # Token for any forms of brackets
-# (\(|\)|{|})
+# [\(\){}]
 class BracketToken(BaseToken):
-    regex = r'(\(|\)|{|})'
+    regex = r'[\(\){}]'
 
 
 # Token to match a colon
@@ -142,22 +144,37 @@ class DoubleQuoteToken(BaseToken):
 
 
 # List of token classes in order of required regex matching precedence
-token_types = [BooleanToken, ReservedToken, KeywordToken, IntegerToken, UnaryOperatorToken, BinaryOperatorToken,
-               NewlineToken, TypeIdToken, ObjectIdToken, DispatchToken, ComparatorToken, AssignmentToken, BracketToken,
-               ColonToken, SemiColonToken, ArrowToken, CommaToken, DoubleQuoteToken, WhitespaceToken]
+token_types = [StringToken, BooleanToken, ReservedToken, KeywordToken, IntegerToken, UnaryOperatorToken,
+               BinaryOperatorToken, NewlineToken, ObjectIdToken, TypeIdToken, DispatchToken, ComparatorToken,
+               AssignmentToken, BracketToken, ColonToken, SemiColonToken, ArrowToken, CommaToken, DoubleQuoteToken,
+               WhitespaceToken]
 
 
 # Converts a string into a list of tokens
 def tokenise(string):
-    # Make sure we record the line and column number for each token
-    line = 1
-    column = 0
+    line = 1        # Current line number
+    line_start = 0  # Line start "index", based on newlines
 
     # Combine regex into a master regex, with named regular expression groups
     master_regex = '|'.join('(?P<%s>%s)' % (token_type.__name__, token_type.regex) for token_type in token_types)
 
     # Iterate through all regex matches
     for match in re.finditer(master_regex, string):
-        print(match.lastgroup, match.group(match.lastgroup))
+        column = 0
+        name = match.lastgroup
+
+        if name == 'NewlineToken':
+            # Bump up the line, and set the start index of the new line
+            line += 1
+            line_start = match.end()
+        else:
+            column = match.start() - line_start + 1
+
+        # Get the actual match
+        value = match.group(name)
+        # Instantiate the token class with eval of the named match :-(
+        token = eval(name)(value, line, column)
+        print(token)
+
 
 
