@@ -1,6 +1,16 @@
 import re
 
 
+# Returns an ugly case-insensitive regex for the given lowercase string
+def create_insensitive_regex(string):
+    return ''.join('[%s%s]' % (char, char.upper()) for char in string)
+
+
+# Returns a group of case-insensitive matches, given a list of lowercase strings
+def create_insensitive_regex_group(strings):
+    return '|'.join('(%s)' % create_insensitive_regex(string) for string in strings)
+
+
 # Base token class that stores the value, line number, and column
 class BaseToken:
     regex = ''
@@ -19,7 +29,7 @@ class BaseToken:
 # true or false with every character but the first being case-insensitive
 # (t(r|R)(u|U)(e|E)|f(a|A)(l|L)(s|S)(e|E))
 class BooleanToken(BaseToken):
-    regex = r'(t(r|R)(u|U)(e|E)|f(a|A)(l|L)(s|S)(e|E))'
+    regex = r'(t%s|f%s)' % (create_insensitive_regex('rue'), create_insensitive_regex('alse'))
 
 
 # Token for any reserved cool keywords
@@ -71,15 +81,15 @@ class NewlineToken(BaseToken):
 # Token for any keywords
 # case-insensitive class, else, fi, if, in, inherits, let, loop, pool, then, while, case, esac, new, of
 # (?i)(class|inherits|else|fi|if|in|let|loop|pool|then|while|case|esac|new|of)
-# TODO: case insensivity flag here applied globally
 class KeywordToken(BaseToken):
-    regex = r'(?i)(class|inherits|else|fi|if|in|let|loop|pool|then|while|case|esac|new|of)'
+    regex = create_insensitive_regex_group(['class', 'inherits', 'else', 'fi', 'if', 'in', 'let', 'loop', 'pool', 'then'
+                                            'while', 'case', 'esac', 'new', 'of'])
 
 
 # Token to match any of the unary operators
 # (~|isvoid|not)
 class UnaryOperatorToken(BaseToken):
-    regex = r'(~|isvoid|not)'
+    regex = create_insensitive_regex_group(['~', 'isvoid', 'not'])
 
 
 # Token to match any of the dispatch tokens
@@ -179,4 +189,3 @@ def tokenise(string):
 
 
 # TODO: Change to ordered dict? Eval is ugly
-# TODO: Sort out case-insensitive issue?????????
