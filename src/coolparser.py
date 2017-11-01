@@ -16,7 +16,7 @@ def parse(path):
         logger.info(tokens)
         # Parse
         logger.success('No errors found')
-    except Exception:
+    except RuntimeWarning: # defo change to own error
         logger.error('Errors found')
     pass
 
