@@ -178,3 +178,5 @@ def tokenise(string):
 
 
 
+# TODO: Change to ordered dict? Eval is ugly
+# TODO: Sort out case-insensitive issue?????????
