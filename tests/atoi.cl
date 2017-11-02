@@ -11,7 +11,7 @@ class A2I {
         if char = "7" then 7 else
         if char = "8" then 8 else
         if char = "9" then 9 else
-        { abort(); 0; }  -- the 0 is needed to satisfy the typchecker
+        { abort(); 0; }
         fi fi fi fi fi fi fi fi fi fi
      };
 
@@ -27,7 +27,7 @@ class A2I {
 	if i = 7 then "7" else
 	if i = 8 then "8" else
 	if i = 9 then "9" else
-	{ abort(); ""; }  -- the "" is needed to satisfy the typchecker
+	{ abort(); ""; }
         fi fi fi fi fi fi fi fi fi fi
      };
 
