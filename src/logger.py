@@ -17,13 +17,19 @@ def info(*string):
 
 
 def error(*string):
-    print(BackgroundColours.FAIL, *string, BackgroundColours.ENDC)
+    print(BackgroundColours.FAIL, end='')
+    print(*string)
+    print(BackgroundColours.ENDC, end='')
 
 
 def success(*string):
-    print(BackgroundColours.GREEN, *string, BackgroundColours.ENDC)
+    print(BackgroundColours.GREEN, end='')
+    print(*string)
+    print(BackgroundColours.ENDC, end='')
 
 
 def header(*string):
-    print(BackgroundColours.BLUE, *string, BackgroundColours.ENDC)
+    print(BackgroundColours.BLUE, end='')
+    print(*string)
+    print(BackgroundColours.ENDC, end='')
 
