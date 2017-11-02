@@ -75,7 +75,7 @@ class WhitespaceToken(BaseToken):
 # Token to capture newline tokens
 # \n
 class NewlineToken(BaseToken):
-    regex = r'\n+'
+    regex = r'\n'
 
 
 # Token for any keywords
@@ -191,9 +191,11 @@ def tokenise(string):
         token_class = globals()[name]
         token = token_class(value, line, column)
 
+        print(token)
         # Finally, append it
         tokens.append(token)
 
     return tokens
 
 # TODO: Report lexing errors here???
+# TODO: Doesn't actually catch double quotes
