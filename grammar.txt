@@ -1,0 +1,49 @@
+program     ::= [[class;]]+
+
+class       ::= class TYPE [inherits TYPE] { [[feature;]]∗ }
+
+feature     ::= ID( [ formal [[, formal]]∗ ] ) : TYPE { expr }
+            | ID : TYPE [ <- expr ]
+
+formal      ::= ID : TYPE
+
+expr        ::= expr[@TYPE].ID( [ expr [[, expr]]∗ ] )
+            | ID( [ expr [[, expr]]∗ ] )
+            | if expr then expr else expr fi
+            | while expr loop expr pool
+            | { [[expr; ]]+}
+            | let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr
+            | case expr of [[ID : TYPE => expr; ]]+esac
+            | new TYPE
+            | (expr)
+
+assignTerm  ::= ID <-  notTerm
+            | notTerm
+
+notTerm     ::= not compareTerm
+            | compareTerm
+
+compareTerm ::= compareTerm <= addTerm
+            | compareTerm < addTerm
+            | compareTerm = addTerm
+            | addTerm
+
+addTerm     ::= addTerm + multiTerm
+            | addTerm - multiTerm
+            | multiTerm
+
+multiTerm   ::= multiTerm * isvoidterm
+            | multiTerm / isvoidterm
+            | isvoidTerm
+
+isvoidTerm  ::= isvoid tildeTerm
+            | tildeTerm
+
+tildeTerm   ::= ~factor
+            | factor
+
+factor      ::= ID
+            | integer
+            | string
+            | true
+            | false

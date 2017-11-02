@@ -195,3 +195,5 @@ def tokenise(string):
         tokens.append(token)
 
     return tokens
+
+# TODO: Report lexing errors here???
