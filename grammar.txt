@@ -13,9 +13,10 @@ expr        ::= expr[@TYPE].ID( [ expr [[, expr]]∗ ] )
             | while expr loop expr pool
             | { [[expr; ]]+}
             | let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr
-            | case expr of [[ID : TYPE => expr; ]]+esac
+            | case expr of [[ID : TYPE => expr; ]]+ esac
             | new TYPE
             | (expr)
+            | assignTerm
 
 assignTerm  ::= ID <-  notTerm
             | notTerm
@@ -32,8 +33,8 @@ addTerm     ::= addTerm + multiTerm
             | addTerm - multiTerm
             | multiTerm
 
-multiTerm   ::= multiTerm * isvoidterm
-            | multiTerm / isvoidterm
+multiTerm   ::= multiTerm * isvoidTerm
+            | multiTerm / isvoidTerm
             | isvoidTerm
 
 isvoidTerm  ::= isvoid tildeTerm
@@ -47,3 +48,5 @@ factor      ::= ID
             | string
             | true
             | false
+
+TODO: Left factoring, left recursion removal
