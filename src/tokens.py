@@ -69,13 +69,13 @@ class IntegerToken(BaseToken):
 # Token to capture any whitespace
 # ascii 32, \f \t \v \r
 class WhitespaceToken(BaseToken):
-    regex = r'( |\f|\t|\v|\r)'
+    regex = r'[ \f\t\v\r]+'
 
 
 # Token to capture newline tokens
 # \n
 class NewlineToken(BaseToken):
-    regex = r'\n'
+    regex = r'\n+'
 
 
 # Token for any keywords
@@ -93,9 +93,9 @@ class UnaryOperatorToken(BaseToken):
 
 
 # Token to match any of the dispatch tokens
-# (\.|@)
+# [\.@]
 class DispatchToken(BaseToken):
-    regex = r'(\.|@)'
+    regex = r'[\.@]'
 
 
 # Token to match an assignment operation
@@ -119,7 +119,7 @@ class ComparatorToken(BaseToken):
 # Token for anything that doesn't match
 # Match anything that's not whitespace
 class UnknownToken(BaseToken):
-    regex = r'\S'
+    regex = r'\S+'
 
 
 # Token for any forms of brackets
@@ -172,12 +172,15 @@ def tokenise(string):
     # Iterate through all regex matches
     for match in re.finditer(master_regex, string):
         column = 0
-        name = match.lastgroup
+        name = match.lastgroup      # Name of token that was matched
 
         if name == 'NewlineToken':
             # Bump up the line, and set the start index of the new line
             line += 1
             line_start = match.end()
+        elif name == 'WhitespaceToken':
+            # Skip whitespace tokens
+            continue
         else:
             column = match.start() - line_start + 1
 
