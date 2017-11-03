@@ -24,18 +24,24 @@ assignTerm  ::= ID <-  notTerm
 notTerm     ::= not compareTerm
             | compareTerm
 
-compareTerm ::= compareTerm <= addTerm
-            | compareTerm < addTerm
-            | compareTerm = addTerm
-            | addTerm
+compareTerm ::= addTerm compareTerm'
 
-addTerm     ::= addTerm + multiTerm
-            | addTerm - multiTerm
-            | multiTerm
+compareTerm'::= <= addTerm compareTerm'
+            | < addTerm compareTerm'
+            | = addTerm compareTerm'
+            | ϵ
 
-multiTerm   ::= multiTerm * isvoidTerm
-            | multiTerm / isvoidTerm
-            | isvoidTerm
+addTerm     ::= multiTerm addTerm'
+
+addTerm'    ::= + multiTerm addTerm'
+            | - multiTerm addTerm'
+            | ϵ
+
+multiTerm   ::= isvoidTerm multiTerm'
+
+multiTerm'  ::= * isvoidTerm multiTerm'
+            | / isvoidTerm multiTerm'
+            | ϵ
 
 isvoidTerm  ::= isvoid tildeTerm
             | tildeTerm
