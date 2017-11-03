@@ -3,6 +3,7 @@
 import logger
 
 from tokens import tokenise
+import syntax_parser
 
 
 # Parser entry point
@@ -13,9 +14,10 @@ def parse(path):
             program_string = file.read()
 
         # Lex character-by-character
-        tokens = tokenise(program_string)
+        tokens, errors = tokenise(program_string)
 
         # Parse
+        tree, errors = syntax_parser.parse(tokens)
         logger.success('No errors found')
     except RuntimeWarning: # defo change to own error
         logger.error('Errors found')
