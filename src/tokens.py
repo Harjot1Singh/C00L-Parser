@@ -20,6 +20,10 @@ class BaseToken:
         self.line = line
         self.column = column
 
+    # Returns the stored value
+    def val(self):
+        return self.val
+
     # Return human-readable token with name, value, and line + column
     def __str__(self):
         return self.__class__.__name__ + '(' + self.value + ')' + ' [' + str(self.line) + ':' + str(self.column) + ']'
@@ -163,6 +167,7 @@ token_types = [StringToken, BooleanToken, ReservedToken, KeywordToken, IntegerTo
 # Converts a string into a list of tokens
 def tokenise(string):
     tokens = []     # List of lexed tokens
+    errors = []     # Any encountered errors
     line = 1        # Current line number
     line_start = 0  # Line start "index", based on newlines
 
@@ -191,11 +196,10 @@ def tokenise(string):
         token_class = globals()[name]
         token = token_class(value, line, column)
 
-        print(token)
         # Finally, append it
         tokens.append(token)
 
-    return tokens
+    return tokens, errors
 
 # TODO: Report lexing errors here???
 # TODO: Doesn't actually catch double quotes
