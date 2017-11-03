@@ -1,58 +1,89 @@
-program     ::= [[class;]]+
+program         ::= class;
+                | class; program
 
-class       ::= class TYPE [inherits TYPE] { [[feature;]]∗ }
+class           ::= class TYPE { classFeature }
+                | class TYPE { }
+                | class TYPE inherits TYPE { classFeature }
+                | class TYPE inherits TYPE { }
 
-feature     ::= ID( [ formal [[, formal]]∗ ] ) : TYPE { expr }
-            | ID : TYPE [ <- expr ]
+classFeature    ::= feature;
+                | feature; classFeature
 
-formal      ::= ID : TYPE
+feature         ::= ID( featureFormal ) : TYPE { expr }
+                | ID( ) : TYPE { expr }
+                | ID : TYPE <- expr
+                | ID : TYPE
 
-expr        ::= expr[@TYPE].ID( [ expr [[, expr]]∗ ] )
-            | ID( [ expr [[, expr]]∗ ] )
-            | if expr then expr else expr fi
-            | while expr loop expr pool
-            | { [[expr; ]]+}
-            | let ID : TYPE [ <- expr ] [[,ID : TYPE [ <- expr ]]]∗ in expr
-            | case expr of [[ID : TYPE => expr; ]]+ esac
-            | new TYPE
-            | (expr)
-            | assignTerm
+featureFormal   ::= formal
+                | formal, featureFormal
 
-assignTerm  ::= ID <-  notTerm
-            | notTerm
+formal          ::= ID : TYPE
 
-notTerm     ::= not compareTerm
-            | compareTerm
+expr            ::= expr@TYPE.ID( exprComma )
+                | expr@TYPE.ID( )
+                | expr.ID( exprComma )
+                | expr.ID( )
+                | ID( exprComma )
+                | ID( )
+                | if expr then expr else expr fi
+                | while expr loop expr pool
+                | { exprSemiColon }
+                | let IDTypeExprs in expr
+                | case expr of IDTypeArrow esac
+                | new TYPE
+                | (expr)
+                | assignTerm
 
-compareTerm ::= addTerm compareTerm'
+IDTypeArrow     ::= ID : TYPE => expr;
+                | ID : TYPE => expr; IDTypeArrow
 
-compareTerm'::= <= addTerm compareTerm'
-            | < addTerm compareTerm'
-            | = addTerm compareTerm'
-            | ϵ
+IDTypeExprs     ::= IDTypeExpr
+                | IDTypeExpr, IDTypeExprs
 
-addTerm     ::= multiTerm addTerm'
+IDTypeExpr      ::= ID : TYPE
+                | ID : TYPE <- expr
 
-addTerm'    ::= + multiTerm addTerm'
-            | - multiTerm addTerm'
-            | ϵ
+exprComma       ::= expr
+                | expr, exprComma
 
-multiTerm   ::= isvoidTerm multiTerm'
+exprSemiColon   ::= expr;
+                | expr; exprSemiColon
 
-multiTerm'  ::= * isvoidTerm multiTerm'
-            | / isvoidTerm multiTerm'
-            | ϵ
+assignTerm      ::= ID <-  notTerm
+                | notTerm
 
-isvoidTerm  ::= isvoid tildeTerm
-            | tildeTerm
+notTerm         ::= not compareTerm
+                | compareTerm
 
-tildeTerm   ::= ~factor
-            | factor
+compareTerm     ::= addTerm compareTerm'
 
-factor      ::= ID
-            | integer
-            | string
-            | true
-            | false
+compareTerm'    ::= <= addTerm compareTerm'
+                | < addTerm compareTerm'
+                | = addTerm compareTerm'
+                | ϵ
+
+addTerm         ::= multiTerm addTerm'
+
+addTerm'        ::= + multiTerm addTerm'
+                | - multiTerm addTerm'
+                | ϵ
+
+multiTerm       ::= isvoidTerm multiTerm'
+
+multiTerm'      ::= * isvoidTerm multiTerm'
+                | / isvoidTerm multiTerm'
+                | ϵ
+
+isvoidTerm      ::= isvoid tildeTerm
+                | tildeTerm
+
+tildeTerm       ::= ~factor
+                | factor
+
+factor          ::= ID
+                | integer
+                | string
+                | true
+                | false
 
 TODO: Left factoring, left recursion removal

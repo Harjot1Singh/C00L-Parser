@@ -1,4 +1,4 @@
-class A2I {
+Class A2I {
 
      c2i(char : String) : Int {
 	if char = "0" then 0 else

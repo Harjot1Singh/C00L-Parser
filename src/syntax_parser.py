@@ -36,5 +36,6 @@ def parse(tokens):
 def parse_program(token_iter):
     first = token_iter.next()
     second = token_iter.lookahead()
-
-    if first is tokens.KeywordToken and
+    print(first)
+    if isinstance(first, tokens.KeywordToken) :
+        print(first, second)

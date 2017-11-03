@@ -22,11 +22,11 @@ class BaseToken:
 
     # Returns the stored value
     def val(self):
-        return self.val
+        return self.value
 
     # Return human-readable token with name, value, and line + column
     def __str__(self):
-        return self.__class__.__name__ + '(' + self.value + ')' + ' [' + str(self.line) + ':' + str(self.column) + ']'
+        return self.__class__.__name__ + '(' + self.val() + ')' + ' [' + str(self.line) + ':' + str(self.column) + ']'
 
 
 # Token for a boolean value
@@ -34,6 +34,10 @@ class BaseToken:
 # (t(r|R)(u|U)(e|E)|f(a|A)(l|L)(s|S)(e|E))
 class BooleanToken(BaseToken):
     regex = r'(t%s|f%s)' % (create_insensitive_regex('rue'), create_insensitive_regex('alse'))
+
+    # Case-insensitive
+    def val(self):
+        return super().val().lower()
 
 
 # Token for any reserved cool keywords
@@ -88,6 +92,10 @@ class NewlineToken(BaseToken):
 class KeywordToken(BaseToken):
     regex = create_insensitive_regex_group(['class', 'inherits', 'else', 'fi', 'if', 'in', 'let', 'loop', 'pool',
                                             'then', 'while', 'case', 'esac', 'new', 'of'])
+
+    # Case-insensitive
+    def val(self):
+        return super().val().lower()
 
 
 # Token to match any of the unary operators
@@ -183,6 +191,8 @@ def tokenise(string):
             # Bump up the line, and set the start index of the new line
             line += 1
             line_start = match.end()
+            # Skip newline tokens
+            continue
         elif name == 'WhitespaceToken':
             # Skip whitespace tokens
             continue
