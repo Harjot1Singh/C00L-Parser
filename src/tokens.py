@@ -165,6 +165,11 @@ class DoubleQuoteToken(BaseToken):
     regex = r'"'
 
 
+# Token to represent the end of file
+class EOFToken(BaseToken):
+    pass
+
+
 # List of token classes in order of required regex matching precedence
 token_types = [StringToken, BooleanToken, ReservedToken, KeywordToken, IntegerToken, UnaryOperatorToken,
                BinaryOperatorToken, NewlineToken, ObjectIdToken, TypeIdToken, DispatchToken, ComparatorToken,
@@ -209,6 +214,8 @@ def tokenise(string):
         # Finally, append it
         tokens.append(token)
 
+    # Append the EOF token
+    tokens.append(EOFToken(None, line + 1, 0))
     return tokens, errors
 
 # TODO: Report lexing errors here???
