@@ -6,6 +6,7 @@ class PeekableIterator:
     def __init__(self, lst):
         self.iterator = iter(lst)
         self.lookahead_val = None
+        self.current_val = None
 
     # Looks ahead to the next value in the iterator, without moving it
     def lookahead(self):
@@ -18,15 +19,19 @@ class PeekableIterator:
     # Returns the next element of the iterator
     def next(self):
         # Return the lookahead value if lookahead was called, otherwise call next directly
-        val = self.lookahead_val if self.lookahead_val is not None else next(self.iterator)
+        self.current_val = self.lookahead_val if self.lookahead_val is not None else next(self.iterator)
         self.lookahead_val = None
-        return val
+        return self.current_val
+
+    # Returns the current element
+    def current(self):
+        return self.current_val
 
 
 # Entry point for syntax parsing
-def parse(tokens):
+def parse(token_lst):
     # Setup iterator with lookahead functionality
-    iterator = PeekableIterator(tokens)
+    iterator = PeekableIterator(token_lst)
 
     parse_program(iterator)
 
@@ -34,8 +39,18 @@ def parse(tokens):
 
 
 def parse_program(token_iter):
-    first = token_iter.next()
-    second = token_iter.lookahead()
-    print(first)
-    if isinstance(first, tokens.KeywordToken) :
-        print(first, second)
+    token = token_iter.next()
+
+    if isinstance(token, tokens.KeywordToken) and token.val() == 'class':
+        parse_program(token_iter)
+        token = token_iter.next()
+
+        if isinstance(token, tokens.SemiColonToken):
+            parse_program(token_iter)
+
+    else:
+        print('not matched')
+
+
+def parse_class(token_iter):
+    token = token_iter.next()
