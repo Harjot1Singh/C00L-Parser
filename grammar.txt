@@ -1,53 +1,75 @@
-program         ::= class;
-                | class; program
+program         ::= class; programs
 
-class           ::= class TYPE { classFeature }
-                | class TYPE { }
-                | class TYPE inherits TYPE { classFeature }
-                | class TYPE inherits TYPE { }
+programs        ::= program
+                | ϵ
 
-classFeature    ::= feature;
-                | feature; classFeature
+class           ::= class TYPE classDef
 
-feature         ::= ID( featureFormal ) : TYPE { expr }
-                | ID( ) : TYPE { expr }
-                | ID : TYPE <- expr
-                | ID : TYPE
+classDef        ::= bracketFeature
+                | inherits TYPE bracketFeature
+
+bracketFeature  ::= { bracketFeatureM }
+
+bracketFeatureM ::= classFeature
+                | ϵ
+
+classFeature    ::= feature; classFeatures
+
+classFeatures   ::= classFeature
+                | ϵ
+
+feature         ::= optionalID : TYPE { expr }
+                | formal optExpr
+
+optionalID      ::= ID( optionalFeatures )
+
+optionalFeatures::= featureFormal
+                | ϵ
+
+optExpr         ::= <- expr
+                | ϵ
 
 featureFormal   ::= formal
                 | formal, featureFormal
 
 formal          ::= ID : TYPE
 
-expr            ::= expr@TYPE.ID( exprComma )
-                | expr@TYPE.ID( )
-                | expr.ID( exprComma )
-                | expr.ID( )
-                | ID( exprComma )
-                | ID( )
-                | if expr then expr else expr fi
-                | while expr loop expr pool
-                | { exprSemiColon }
-                | let IDTypeExprs in expr
-                | case expr of IDTypeArrow esac
-                | new TYPE
-                | (expr)
-                | assignTerm
+expr            ::= ID( optExprComma ) expr'
+                | if expr then expr else expr fi expr'
+                | while expr loop expr pool expr'
+                | { exprSemiColon } expr'
+                | let IDTypeExpr in expr expr'
+                | case expr of IDTypeArrow esac expr'
+                | new TYPE expr'
+                | (expr) expr'
+                | assignTerm expr'
 
-IDTypeArrow     ::= ID : TYPE => expr;
-                | ID : TYPE => expr; IDTypeArrow
+expr'           ::= @TYPE.ID( optExprComma ) expr'
+                | .ID( optExprComma ) expr'
+                | ϵ
 
-IDTypeExprs     ::= IDTypeExpr
-                | IDTypeExpr, IDTypeExprs
+IDTypeArrow     ::= formal => expr; IDTypeArrows
 
-IDTypeExpr      ::= ID : TYPE
-                | ID : TYPE <- expr
+IDTypeArrows    ::= IDTypeArrow
+                | ϵ
 
-exprComma       ::= expr
-                | expr, exprComma
+IDTypeExpr      ::= formal optExpr IDTypeExprs
 
-exprSemiColon   ::= expr;
-                | expr; exprSemiColon
+IDTypeExprs     ::= , IDTypeExpr
+                | ϵ
+
+optExprComa     ::= exprComma
+                | ϵ
+
+exprComma       ::= expr exprCommas
+
+exprCommas      ::= , exprComma
+                | ϵ
+
+exprSemiColon   ::= expr; exprSemiColons
+
+exprSemiColons  ::= exprSemiColon
+                | ϵ
 
 assignTerm      ::= ID <-  notTerm
                 | notTerm
@@ -85,5 +107,3 @@ factor          ::= ID
                 | string
                 | true
                 | false
-
-TODO: Left factoring, left recursion removal
