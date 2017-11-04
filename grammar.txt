@@ -1,75 +1,75 @@
-program          ->  class' ; programs
+program          ->  class_def ; programs
 
 programs         ->  program | EPSILON
 
-class'           ->  class TYPE classDef
+class_def           ->  class TYPE class_detail
 
-classDef         ->  bracketFeature | inherits TYPE bracketFeature
+class_detail        ->  bracket_feature | inherits TYPE bracket_feature
 
-bracketFeature   ->  { bracketFeatureM }
+bracket_feature   ->  { optional_bracket_feature }
 
-bracketFeatureM  ->  classFeature | EPSILON
+optional_bracket_feature->  class_feature | EPSILON
 
-classFeature     ->  feature ; classFeatures
+class_feature     ->  feature ; class_features
 
-classFeatures    ->  classFeature | EPSILON
+class_features    ->  class_feature | EPSILON
 
-feature          ->  ID featureDetails
+feature          ->  ID feature_details
 
-featureDetails   ->  ( optionalFeatures ) : TYPE { expr } | : TYPE optExpr
+feature_details   ->  ( optional_features ) : TYPE { expr } | : TYPE optional_expr
 
-optionalFeatures ->  featureFormal | EPSILON
+optional_features ->  feature_formal | EPSILON
 
-optExpr          ->  <- expr | EPSILON
+optional_expr          ->  <- expr | EPSILON
 
-featureFormal    ->  formal featureFormals
+feature_formal    ->  formal feature_formals
 
-featureFormals   ->  , featureFormal | EPSILON
+feature_formals   ->  , feature_formal | EPSILON
 
 formal           ->  ID : TYPE
 
-expr             ->  if expr then expr else expr fi expr' | while expr loop expr pool expr' | { exprSemiColon } expr' | let IDTypeExpr in expr expr' | case expr of IDTypeArrow esac expr' | new TYPE expr' | ( expr ) expr' | assignTerm expr'
+expr             ->  if expr then expr else expr fi expr_rr | while expr loop expr pool expr_rr | { semicolon_expr } expr_rr | let id_type_expr in expr expr_rr | case expr of id_type_arrow esac expr_rr | new TYPE expr_rr | ( expr ) expr_rr | assign_term expr_rr
 
-expr'            ->  @ TYPE . ID ( optExprComma ) expr' | . ID ( optExprComma ) expr' | EPSILON
+expr_rr            ->  @ TYPE . ID ( optional_comma_expr ) expr_rr | . ID ( optional_comma_expr ) expr_rr | EPSILON
 
-IDTypeArrow      ->  formal => expr ; IDTypeArrows
+id_type_arrow      ->  formal => expr ; id_type_arrows
 
-IDTypeArrows     ->  IDTypeArrow | EPSILON
+id_type_arrows     ->  id_type_arrow | EPSILON
 
-IDTypeExpr       ->  formal optExpr IDTypeExprs
+id_type_expr       ->  formal optional_expr id_type_exprs
 
-IDTypeExprs      ->  , IDTypeExpr | EPSILON
+id_type_exprs      ->  , id_type_expr | EPSILON
 
-optExprComa      ->  exprComma | EPSILON
+optional_comma_expr      ->  comma_expr | EPSILON
 
-exprComma        ->  expr exprCommas
+comma_expr        ->  expr comma_exprs
 
-exprCommas       ->  , exprComma | EPSILON
+comma_exprs       ->  , comma_expr | EPSILON
 
-exprSemiColon    ->  expr ; exprSemiColons
+semicolon_expr    ->  expr ; semicolon_exprs
 
-exprSemiColons   ->  exprSemiColon | EPSILON
+semicolon_exprs   ->  semicolon_expr | EPSILON
 
-assignTerm       ->  ID <-  notTerm | notTerm
+assign_term       ->  ID <-  not_term | not_term
 
-notTerm          ->  not compareTerm | compareTerm
+not_term          ->  not compare_term | compare_term
 
-compareTerm      ->  addTerm compareTerm'
+compare_term      ->  add_term compare_term_rr
 
-compareTerm'     ->  <= addTerm compareTerm' | < addTerm compareTerm' | = addTerm compareTerm' | EPSILON
+compare_term_rr     ->  <= add_term compare_term_rr | < add_term compare_term_rr | = add_term compare_term_rr | EPSILON
 
-addTerm          ->  multiTerm addTerm'
+add_term          ->  multi_term add_term_rr
 
-addTerm'         ->  + multiTerm addTerm' | - multiTerm addTerm' | EPSILON
+add_term_rr     ->  + multi_term add_term_rr | - multi_term add_term_rr | EPSILON
 
-multiTerm        ->  isvoidTerm multiTerm'
+multi_term      ->  isvoid_term multi_term_rr
 
-multiTerm'       ->  * isvoidTerm multiTerm' | / isvoidTerm multiTerm' | EPSILON
+multi_term_rr    ->  * isvoid_term multi_term_rr | / isvoid_term multi_term_rr | EPSILON
 
-isvoidTerm       ->  isvoid tildeTerm | tildeTerm
+isvoid_term      ->  isvoid tilde_term | tilde_term
 
-tildeTerm        ->  ~ factor | factor
+tilde_term       ->  ~ factor | factor
 
-factor           ->  ID IDFactor | integer | string | true | false
+factor           ->  ID factor_id | integer | string | true | false
 
-IDFactor         -> ( optExprComma ) expr' | EPSILON
+factor_id        -> ( optional_comma_expr ) expr_rr | EPSILON
