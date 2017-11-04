@@ -1,111 +1,75 @@
-program         ::= class; programs
+program          ->  class' ; programs
 
-programs        ::= program
-                | ϵ
+programs         ->  program | EPSILON
 
-class           ::= class TYPE classDef
+class'           ->  class TYPE classDef
 
-classDef        ::= bracketFeature
-                | inherits TYPE bracketFeature
+classDef         ->  bracketFeature | inherits TYPE bracketFeature
 
-bracketFeature  ::= { bracketFeatureM }
+bracketFeature   ->  { bracketFeatureM }
 
-bracketFeatureM ::= classFeature
-                | ϵ
+bracketFeatureM  ->  classFeature | EPSILON
 
-classFeature    ::= feature; classFeatures
+classFeature     ->  feature ; classFeatures
 
-classFeatures   ::= classFeature
-                | ϵ
+classFeatures    ->  classFeature | EPSILON
 
-feature         ::= ID featureDetails
+feature          ->  ID featureDetails
 
-featureDetails  ::= ( optionalFeatures ) : TYPE { expr }
-                | : TYPE optExpr
+featureDetails   ->  ( optionalFeatures ) : TYPE { expr } | : TYPE optExpr
 
-optionalFeatures::= featureFormal
-                | ϵ
+optionalFeatures ->  featureFormal | EPSILON
 
-optExpr         ::= <- expr
-                | ϵ
+optExpr          ->  <- expr | EPSILON
 
-featureFormal   ::= formal featureFormals
+featureFormal    ->  formal featureFormals
 
-featureFormals  ::= , featureFormal
-                | ϵ
+featureFormals   ->  , featureFormal | EPSILON
 
-formal          ::= ID : TYPE
+formal           ->  ID : TYPE
 
-expr            ::= ID( optExprComma ) expr'
-                | if expr then expr else expr fi expr'
-                | while expr loop expr pool expr'
-                | { exprSemiColon } expr'
-                | let IDTypeExpr in expr expr'
-                | case expr of IDTypeArrow esac expr'
-                | new TYPE expr'
-                | (expr) expr'
-                | assignTerm expr'
+expr             ->  if expr then expr else expr fi expr' | while expr loop expr pool expr' | { exprSemiColon } expr' | let IDTypeExpr in expr expr' | case expr of IDTypeArrow esac expr' | new TYPE expr' | ( expr ) expr' | assignTerm expr'
 
-expr'           ::= @TYPE.ID( optExprComma ) expr'
-                | .ID( optExprComma ) expr'
-                | ϵ
+expr'            ->  @ TYPE . ID ( optExprComma ) expr' | . ID ( optExprComma ) expr' | EPSILON
 
-IDTypeArrow     ::= formal => expr; IDTypeArrows
+IDTypeArrow      ->  formal => expr ; IDTypeArrows
 
-IDTypeArrows    ::= IDTypeArrow
-                | ϵ
+IDTypeArrows     ->  IDTypeArrow | EPSILON
 
-IDTypeExpr      ::= formal optExpr IDTypeExprs
+IDTypeExpr       ->  formal optExpr IDTypeExprs
 
-IDTypeExprs     ::= , IDTypeExpr
-                | ϵ
+IDTypeExprs      ->  , IDTypeExpr | EPSILON
 
-optExprComa     ::= exprComma
-                | ϵ
+optExprComa      ->  exprComma | EPSILON
 
-exprComma       ::= expr exprCommas
+exprComma        ->  expr exprCommas
 
-exprCommas      ::= , exprComma
-                | ϵ
+exprCommas       ->  , exprComma | EPSILON
 
-exprSemiColon   ::= expr; exprSemiColons
+exprSemiColon    ->  expr ; exprSemiColons
 
-exprSemiColons  ::= exprSemiColon
-                | ϵ
+exprSemiColons   ->  exprSemiColon | EPSILON
 
-assignTerm      ::= ID <-  notTerm
-                | notTerm
+assignTerm       ->  ID <-  notTerm | notTerm
 
-notTerm         ::= not compareTerm
-                | compareTerm
+notTerm          ->  not compareTerm | compareTerm
 
-compareTerm     ::= addTerm compareTerm'
+compareTerm      ->  addTerm compareTerm'
 
-compareTerm'    ::= <= addTerm compareTerm'
-                | < addTerm compareTerm'
-                | = addTerm compareTerm'
-                | ϵ
+compareTerm'     ->  <= addTerm compareTerm' | < addTerm compareTerm' | = addTerm compareTerm' | EPSILON
 
-addTerm         ::= multiTerm addTerm'
+addTerm          ->  multiTerm addTerm'
 
-addTerm'        ::= + multiTerm addTerm'
-                | - multiTerm addTerm'
-                | ϵ
+addTerm'         ->  + multiTerm addTerm' | - multiTerm addTerm' | EPSILON
 
-multiTerm       ::= isvoidTerm multiTerm'
+multiTerm        ->  isvoidTerm multiTerm'
 
-multiTerm'      ::= * isvoidTerm multiTerm'
-                | / isvoidTerm multiTerm'
-                | ϵ
+multiTerm'       ->  * isvoidTerm multiTerm' | / isvoidTerm multiTerm' | EPSILON
 
-isvoidTerm      ::= isvoid tildeTerm
-                | tildeTerm
+isvoidTerm       ->  isvoid tildeTerm | tildeTerm
 
-tildeTerm       ::= ~factor
-                | factor
+tildeTerm        ->  ~ factor | factor
 
-factor          ::= ID
-                | integer
-                | string
-                | true
-                | false
+factor           ->  ID IDFactor | integer | string | true | false
+
+IDFactor         -> ( optExprComma ) expr' | EPSILON
