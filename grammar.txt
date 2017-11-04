@@ -18,10 +18,10 @@ classFeature    ::= feature; classFeatures
 classFeatures   ::= classFeature
                 | ϵ
 
-feature         ::= optionalID : TYPE { expr }
-                | formal optExpr
+feature         ::= ID featureDetails
 
-optionalID      ::= ID( optionalFeatures )
+featureDetails  ::= ( optionalFeatures ) : TYPE { expr }
+                | : TYPE optExpr
 
 optionalFeatures::= featureFormal
                 | ϵ
@@ -29,8 +29,10 @@ optionalFeatures::= featureFormal
 optExpr         ::= <- expr
                 | ϵ
 
-featureFormal   ::= formal
-                | formal, featureFormal
+featureFormal   ::= formal featureFormals
+
+featureFormals  ::= , featureFormal
+                | ϵ
 
 formal          ::= ID : TYPE
 
