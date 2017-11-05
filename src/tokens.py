@@ -3,12 +3,12 @@ import re
 
 # Returns an ugly case-insensitive regex for the given lowercase string
 def create_insensitive_regex(string):
-    return ''.join('[%s%s]' % (char, char.upper()) for char in string)
+    return ''.join('[{}{}]'.format(char, char.upper()) for char in string)
 
 
 # Returns a group of case-insensitive matches, given a list of lowercase strings
 def create_insensitive_regex_group(strings):
-    return '|'.join('(%s)' % create_insensitive_regex(string) for string in strings)
+    return '|'.join(r'({})\b'.format(create_insensitive_regex(string)) for string in strings)
 
 
 # Base token class that stores the value, line number, and column
@@ -33,7 +33,7 @@ class BaseToken:
 # true or false with every character but the first being case-insensitive
 # (t(r|R)(u|U)(e|E)|f(a|A)(l|L)(s|S)(e|E))
 class BooleanToken(BaseToken):
-    regex = r'(t%s|f%s)' % (create_insensitive_regex('rue'), create_insensitive_regex('alse'))
+    regex = r'(t{}|f{})'.format(create_insensitive_regex('rue'), create_insensitive_regex('alse'))
 
     # Case-insensitive
     def val(self):
