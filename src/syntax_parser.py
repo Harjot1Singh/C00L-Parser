@@ -1,4 +1,4 @@
-import tokens
+from tokens import *
 
 
 # Iterator wrapper that allows looking ahead at the next item
@@ -59,7 +59,7 @@ def parse_next(predict_dict, token_iter):
                     token = token_iter.next()
 
                     if not compare_token(token, terminal):
-                        print('oh no, expected', terminal, 'got', token)
+                        print('oh no, expected', terminal, 'got', token, 'for production', production)
                 else:
                     terminal(token_iter)
 
@@ -83,6 +83,7 @@ def compare_token(token, required):
 
 def parse_next_decorate(production):
     def wrapper(token_iter):
+        print(production.__name__)
         return parse_next(production(), token_iter)
 
     return wrapper
@@ -100,7 +101,7 @@ def parse_next_decorate(production):
 @parse_next_decorate
 def program():
     return {
-        frozenset({(tokens.KeywordToken, 'class')}): [class_def, (tokens.SemiColonToken, None), programs]
+        frozenset({(KeywordToken, 'class')}): [class_def, (SemiColonToken, None), programs]
     }
 
 
@@ -109,8 +110,8 @@ def program():
 @parse_next_decorate
 def programs():
     return {
-        frozenset({(tokens.KeywordToken, 'class')}): [program],
-        frozenset({(tokens.EOFToken, None)}): None
+        frozenset({(KeywordToken, 'class')}): [program],
+        frozenset({(EOFToken, None)}): None
     }
 
 
@@ -118,9 +119,7 @@ def programs():
 @parse_next_decorate
 def class_def():
     return {
-        frozenset({(tokens.KeywordToken, 'class')}): [(tokens.KeywordToken, 'class'),
-                                                      (tokens.TypeIdToken, None),
-                                                      class_detail]
+        frozenset({(KeywordToken, 'class')}): [(KeywordToken, 'class'), (TypeIdToken, None), class_detail]
     }
 
 
@@ -129,10 +128,8 @@ def class_def():
 @parse_next_decorate
 def class_detail():
     return {
-        frozenset({(tokens.BracketToken, '{')}): [bracket_feature],
-        frozenset({(tokens.KeywordToken, 'inherits')}): [(tokens.KeywordToken, 'inherits'),
-                                                         (tokens.TypeIdToken, None),
-                                                         bracket_feature]
+        frozenset({(BracketToken, '{')}): [bracket_feature],
+        frozenset({(KeywordToken, 'inherits')}): [(KeywordToken, 'inherits'), (TypeIdToken, None), bracket_feature]
     }
 
 
@@ -140,7 +137,7 @@ def class_detail():
 @parse_next_decorate
 def bracket_feature():
     return {
-        frozenset({(tokens.BracketToken, '{')}): [(tokens.BracketToken, '{'), optional_bracket_feature]
+        frozenset({(BracketToken, '{')}): [(BracketToken, '{'), optional_bracket_feature]
     }
 
 
@@ -149,8 +146,8 @@ def bracket_feature():
 @parse_next_decorate
 def optional_bracket_feature():
     return {
-        frozenset({(tokens.TypeIdToken, None)}): [class_feature],
-        frozenset({(tokens.BracketToken, '}')}): None
+        frozenset({(ObjectIdToken, None)}): [class_feature],
+        frozenset({(BracketToken, '}')}): None
     }
 
 
@@ -158,7 +155,7 @@ def optional_bracket_feature():
 @parse_next_decorate
 def class_feature():
     return {
-        frozenset({})
+        frozenset({(ObjectIdToken, None)}): [feature, (SemiColonToken, None), class_features]
     }
 
 
@@ -166,53 +163,82 @@ def class_feature():
 # ε	                                        }
 @parse_next_decorate
 def class_features():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [class_feature],
+        frozenset({(BracketToken, '}')}): None
+    }
 
 
 # ID feature_details                        ID
 @parse_next_decorate
 def feature():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), feature_details]
+    }
 
 
 # ( optional_features ) : TYPE { expr }     (
 # : TYPE optional_expr                      :
 @parse_next_decorate
 def feature_details():
-    return {}
+    return {
+        frozenset({(BracketToken, '(')}): [
+            (BracketToken, '('),
+            optional_features,
+            (ColonToken, None),
+            (TypeIdToken, None),
+            (BracketToken, '{'),
+            expr,
+            (BracketToken, '}')
+        ],
+        frozenset({(ColonToken, None)}): [(ColonToken, None), (TypeIdToken, None), optional_expr]
+    }
 
 
 # feature_formal                            ID
 # ε	                                        )
 @parse_next_decorate
 def optional_features():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [feature_formal],
+        frozenset({(BracketToken, ')')}): None
+    }
 
 
 # <- expr                                   <-
 # ε                                         ,, in, ;
 @parse_next_decorate
-def optional_expression():
-    return {}
+def optional_expr():
+    return {
+        frozenset({(AssignmentToken, None)}): [(AssignmentToken, None), expr],
+        frozenset({(CommaToken, None), (KeywordToken, 'in'), (SemiColonToken, None)}): None
+    }
 
 
 # formal feature_formals                    ID
 @parse_next_decorate
 def feature_formal():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [formal, feature_formals]
+    }
 
 
 # , feature_formal	                        ,
 # ε                                         )
 @parse_next_decorate
 def feature_formals():
-    return {}
+    return {
+        frozenset({(CommaToken, None)}): [(CommaToken, None), feature_formal],
+        frozenset({(BracketToken, ')')}): None
+    }
 
 
 # ID : TYPE                                 ID
 @parse_next_decorate
 def formal():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), (SemiColonToken, None), (TypeIdToken, None)]
+    }
 
 
 # if expr then expr else expr fi expr_rr    if
@@ -225,94 +251,260 @@ def formal():
 # assign_term expr_rr                       ID, not, isvoid, ~, integer, string, true, false
 @parse_next_decorate
 def expr():
-    return {}
+    return {
+        frozenset({(KeywordToken, 'if')}): [
+            (KeywordToken, 'if'),
+            expr,
+            (KeywordToken, 'then'),
+            expr,
+            (KeywordToken, 'else'),
+            expr,
+            (KeywordToken, 'fi'),
+            expr_rr
+        ],
+        frozenset({(KeywordToken, 'while')}): [
+            (KeywordToken, 'while'),
+            expr,
+            (KeywordToken, 'loop'),
+            expr,
+            (KeywordToken, 'pool'),
+            expr_rr
+        ],
+        frozenset({(BracketToken, '{')}): [(BracketToken, '{'), semicolon_expr, (BracketToken, '}'), expr_rr],
+        frozenset({(KeywordToken, 'let')}): [(KeywordToken, 'let'), id_type_expr, (KeywordToken, 'in'), expr, expr_rr],
+        frozenset({(KeywordToken, 'case')}): [
+            (KeywordToken, 'case'),
+            expr,
+            (KeywordToken, 'of'),
+            id_type_arrow,
+            (KeywordToken, 'esac'),
+            expr_rr
+        ],
+        frozenset({(KeywordToken, 'new')}): [(KeywordToken, 'new'), (TypeIdToken, None), expr_rr],
+        frozenset({(BracketToken, '(')}): [(BracketToken, '('), expr, (BracketToken, ')'), expr_rr],
+        frozenset({
+            (ObjectIdToken, None),
+            (UnaryOperatorToken, None),
+            (StringToken, None),
+            (IntegerToken, None),
+            (BooleanToken, None)}): [assign_term, expr_rr]
+    }
 
 
 # @TYPE.ID( optional_comma_expr ) expr_rr   @
-# . ID ( optional_comma_expr ) expr_rr      .
+# .ID( optional_comma_expr ) expr_rr        .
 # ε                                         ;, ,, then, else, fi, loop, pool, @, ., of, ), }, in, *, /, +, -, <=, <, =
 @parse_next_decorate
 def expr_rr():
-    return {}
+    return {
+        frozenset({(DispatchToken, '@')}): [
+            (DispatchToken, '@'),
+            (TypeIdToken, None),
+            (DispatchToken, '.'),
+            (ObjectIdToken, None),
+            (BracketToken, '('),
+            optional_comma_expr,
+            (BracketToken, ')'),
+            expr_rr
+        ],
+        frozenset({(DispatchToken, '.')}): [
+            (DispatchToken, '.'),
+            (ObjectIdToken, None),
+            optional_comma_expr,
+            expr_rr
+        ],
+        frozenset({
+            (SemiColonToken, None),
+            (CommaToken, None),
+            (KeywordToken, 'then'),
+            (KeywordToken, 'else'),
+            (KeywordToken, 'fi'),
+            (KeywordToken, 'loop'),
+            (KeywordToken, 'pool'),
+            (DispatchToken, None),
+            (KeywordToken, 'of'),
+            (BracketToken, ')'),
+            (BracketToken, '}'),
+            (KeywordToken, 'in'),
+            (BinaryOperatorToken, None),
+            (ComparatorToken, None)
+        }): None
+    }
 
 
 # formal => expr ; id_type_arrows           ID
 @parse_next_decorate
 def id_type_arrow():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [formal, (ArrowToken, None), expr, (SemiColonToken, None), id_type_arrows]
+    }
 
 
 # id_type_arrow                             ID
 # ε                                         esac
 @parse_next_decorate
 def id_type_arrows():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [id_type_arrow],
+        frozenset({(KeywordToken, 'esac')}): None
+    }
 
 
 # formal optional_expr id_type_exprs        ID
 @parse_next_decorate
 def id_type_expr():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [formal, optional_expr, id_type_exprs]
+    }
 
 
 # , id_type_expr                            ,
 # ε                                         in
 @parse_next_decorate
 def id_type_exprs():
-    return {}
+    return {
+        frozenset({(CommaToken, None)}): [(CommaToken, None), id_type_expr],
+        frozenset({(KeywordToken, 'in')}): None
+    }
 
 
 # comma_expr                        if, while, {, let, case, new, (, ID, not, isvoid, ~, integer, string, true, false
 # ε                                 )
 @parse_next_decorate
 def optional_comma_expr():
-    return {}
+    return {
+        frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (BracketToken, '{'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '('),
+            (UnaryOperatorToken, None),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [comma_expr],
+        frozenset({(BracketToken, ')')}): None
+    }
 
 
 # expr comma_exprs                  if, while, {, let, case, new, (, ID, not, isvoid, ~, integer, string, true, false
 @parse_next_decorate
 def comma_expr():
-    return {}
+    return {
+        frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (BracketToken, '{'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '('),
+            (UnaryOperatorToken, None),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [expr, comma_exprs]
+    }
 
 
 # , comma_expr                              ,
 # ε                                         )
 @parse_next_decorate
 def comma_exprs():
-    return {}
+    return {
+        frozenset({(CommaToken, None)}): [(CommaToken, None), comma_expr],
+        frozenset({(BracketToken, ')')}): None
+    }
 
 
 # expr ; semicolon_exprs            if, while, {, let, case, new, (, ID, not, isvoid, ~, integer, string, true, false
 @parse_next_decorate
 def semicolon_expr():
-    return {}
+    return {
+        frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (BracketToken, '{'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '('),
+            (UnaryOperatorToken, None),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [expr, (SemiColonToken, None), semicolon_exprs]
+    }
 
 
 # semicolon_expr	                if, while, {, let, case, new, (, ID, not, isvoid, ~, integer, string, true, false
 # ε                                 }
 @parse_next_decorate
 def semicolon_exprs():
-    return {}
+    return {
+        frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (BracketToken, '{'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '('),
+            (UnaryOperatorToken, None),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [semicolon_expr],
+        frozenset({(BracketToken, '}')}): None
+    }
 
 
 # ID <- not_term                            ID
 # not_term                                  not, isvoid, ~, ID, integer, string, true, false
 @parse_next_decorate
 def assign_term():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), (AssignmentToken, None), not_term],
+        frozenset({
+            (UnaryOperatorToken, None),
+            (ObjectIdToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [not_term]
+    }
 
 
 # not compare_term                          not
 # compare_term                              isvoid, ~, ID, integer, string, true, false
 @parse_next_decorate
 def not_term():
-    return {}
+    return {
+        frozenset({(UnaryOperatorToken, 'not')}): [(UnaryOperatorToken, 'not'), compare_term],
+        frozenset({
+            (UnaryOperatorToken, 'isvoid'),
+            (UnaryOperatorToken, '~'),
+            (ObjectIdToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [compare_term]
+    }
 
 
 # add_term compare_term_rr                  isvoid, ~, ID, integer, string, true, false
 @parse_next_decorate
 def compare_term():
-    return {}
+    return {
+        frozenset({
+            (UnaryOperatorToken, 'isvoid'),
+            (UnaryOperatorToken, '~'),
+            (ObjectIdToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [add_term, compare_term_rr]
+    }
 
 
 # <= add_term compare_term_rr               <=
@@ -321,13 +513,39 @@ def compare_term():
 # ε                                         @, ., ;, ,, then, else, fi, loop, pool, of, ), }, in
 @parse_next_decorate
 def compare_term_rr():
-    return {}
+    return {
+        frozenset({(ComparatorToken, '<=')}): [(ComparatorToken, '<='), compare_term_rr],
+        frozenset({(ComparatorToken, '<')}): [(ComparatorToken, '<'), compare_term_rr],
+        frozenset({(ComparatorToken, '=')}): [(ComparatorToken, '='), compare_term_rr],
+        frozenset({
+            (DispatchToken, None),
+            (SemiColonToken, None),
+            (CommaToken, None),
+            (KeywordToken, 'then'),
+            (KeywordToken, 'else'),
+            (KeywordToken, 'fi'),
+            (KeywordToken, 'loop'),
+            (KeywordToken, 'pool'),
+            (KeywordToken, 'of'),
+            (BracketToken, ')'),
+            (BracketToken, '}'),
+            (KeywordToken, 'in')
+        }): None
+    }
 
 
 # multi_term add_term_rr                    isvoid, ~, ID, integer, string, true, false
 @parse_next_decorate
 def add_term():
-    return {}
+    return {
+        frozenset({
+            (UnaryOperatorToken, 'isvoid'),
+            (UnaryOperatorToken, '~'),
+            (ObjectIdToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [multi_term, add_term_rr]
+    }
 
 
 # + multi_term add_term_rr                  +
@@ -335,13 +553,39 @@ def add_term():
 # ε                                         <=, <, =, @, ., ;, ,, then, else, fi, loop, pool, of, ), }, in
 @parse_next_decorate
 def add_term_rr():
-    return {}
+    return {
+        frozenset({(BinaryOperatorToken, '+')}): [(BinaryOperatorToken, '+'), multi_term, add_term_rr],
+        frozenset({(BinaryOperatorToken, '-')}): [(BinaryOperatorToken, '-'), multi_term, add_term_rr],
+        frozenset({
+            (ComparatorToken, None),
+            (DispatchToken, None),
+            (SemiColonToken, None),
+            (CommaToken, None),
+            (KeywordToken, 'then'),
+            (KeywordToken, 'else'),
+            (KeywordToken, 'fi'),
+            (KeywordToken, 'loop'),
+            (KeywordToken, 'pool'),
+            (KeywordToken, 'of'),
+            (BracketToken, ')'),
+            (BracketToken, '}'),
+            (KeywordToken, 'in')
+        }): None
+    }
 
 
 # isvoid_term multi_term_rr                 isvoid, ~, ID, integer, string, true, false
 @parse_next_decorate
 def multi_term():
-    return {}
+    return {
+        frozenset({
+            (UnaryOperatorToken, 'isvoid'),
+            (UnaryOperatorToken, '~'),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [isvoid_term, multi_term_rr]
+    }
 
 
 # * isvoid_term multi_term_rr	            *
@@ -349,21 +593,58 @@ def multi_term():
 # ε	                                        +, -, <=, <, =, @, ., ;, ,, then, else, fi, loop, pool, of, ), }, in
 @parse_next_decorate
 def multi_term_rr():
-    return {}
+    return {
+        frozenset({(BinaryOperatorToken, '*')}): [(BinaryOperatorToken, '*'), isvoid_term, multi_term_rr],
+        frozenset({(BinaryOperatorToken, '/')}): [(BinaryOperatorToken, '/'), isvoid_term, multi_term_rr],
+        frozenset({
+            (BinaryOperatorToken, '+'),
+            (BinaryOperatorToken, '-'),
+            (ComparatorToken, None),
+            (DispatchToken, None),
+            (SemiColonToken, None),
+            (CommaToken, None),
+            (KeywordToken, 'then'),
+            (KeywordToken, 'else'),
+            (KeywordToken, 'fi'),
+            (KeywordToken, 'loop'),
+            (KeywordToken, 'pool'),
+            (KeywordToken, 'of'),
+            (BracketToken, ')'),
+            (BracketToken, '}'),
+            (KeywordToken, 'in')
+        }): None
+    }
 
 
 # isvoid tilde_term                         isvoid
 # tilde_term                                ~, ID, integer, string, true, false
 @parse_next_decorate
 def isvoid_term():
-    return {}
+    return {
+        frozenset({(UnaryOperatorToken, 'isvoid')}): [(UnaryOperatorToken, 'isvoid'), tilde_term],
+        frozenset({
+            (UnaryOperatorToken, '~'),
+            (ObjectIdToken, None),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [tilde_term]
+    }
 
 
 # ~ factor                                  ~
 # factor                                    ID, integer, string, true, false
 @parse_next_decorate
 def tilde_term():
-    return {}
+    return {
+        frozenset({(UnaryOperatorToken, '~')}): [(UnaryOperatorToken, '~'), factor],
+        frozenset({
+            (ObjectIdToken, None),
+            (IntegerToken, None),
+            (StringToken, None),
+            (BooleanToken, None)
+        }): [factor]
+    }
 
 
 # ID factor_id                              ID
@@ -373,11 +654,34 @@ def tilde_term():
 # false                                     FALSE
 @parse_next_decorate
 def factor():
-    return {}
+    return {
+        frozenset({(ObjectIdToken, None)}): [ObjectIdToken, factor_id],
+        frozenset({(IntegerToken, None)}): [(IntegerToken, None)],
+        frozenset({(StringToken, None)}): [(StringToken, None)],
+        frozenset({(BooleanToken, None)}): [(BooleanToken, None)],
+    }
 
 
 # ( optional_comma_expr ) expr_rr           (
 # ε                                         *, /, +, -, <=, <, =, @, ., ;, ,, then, else, fi, loop, pool, of, ), }, in
 @parse_next_decorate
 def factor_id():
-    return {}
+    return {
+        frozenset({(BracketToken, ')')}): [(BracketToken, '('), optional_comma_expr, (BracketToken, ')'), expr_rr],
+        frozenset({
+            (BinaryOperatorToken, None),
+            (ComparatorToken, None),
+            (DispatchToken, None),
+            (SemiColonToken, None),
+            (CommaToken, None),
+            (KeywordToken, 'then'),
+            (KeywordToken, 'else'),
+            (KeywordToken, 'fi'),
+            (KeywordToken, 'loop'),
+            (KeywordToken, 'pool'),
+            (KeywordToken, 'of'),
+            (BracketToken, ')'),
+            (BracketToken, '}'),
+            (KeywordToken, 'in'),
+        }): None
+    }
