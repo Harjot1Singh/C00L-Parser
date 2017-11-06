@@ -61,10 +61,10 @@ class ObjectIdToken(BaseToken):
 
 
 # Token for string
-# Anything that's not \b, \t, \n, \f
+# Anything that's not \0
 # Strings are found in double-quotes, but we don't want to capture these
 class StringToken(BaseToken):
-    regex = r'(?!.*(\\b|\\t|\\n|\\f))(?:").*(?:")'
+    regex = r'(?!(\0))(?:")(.|\\\n)*(?:")'
 
 
 # Token for an integer value
@@ -101,7 +101,7 @@ class KeywordToken(BaseToken):
 # Token to match any of the unary operators
 # (~|isvoid|not)
 class UnaryOperatorToken(BaseToken):
-    regex = create_insensitive_regex_group(['~', 'isvoid', 'not'])
+    regex = '(~|{}|{})'.format(create_insensitive_regex('isvoid'), create_insensitive_regex('not'))
 
 
 # Token to match any of the dispatch tokens
@@ -171,10 +171,9 @@ class EOFToken(BaseToken):
 
 
 # List of token classes in order of required regex matching precedence
-token_types = [StringToken, BooleanToken, ReservedToken, KeywordToken, IntegerToken, UnaryOperatorToken,
-               BinaryOperatorToken, NewlineToken, ObjectIdToken, TypeIdToken, DispatchToken, ComparatorToken,
-               AssignmentToken, BracketToken, ColonToken, SemiColonToken, ArrowToken, CommaToken, DoubleQuoteToken,
-               WhitespaceToken]
+token_types = [StringToken, BooleanToken, KeywordToken, IntegerToken, UnaryOperatorToken, AssignmentToken,
+               BinaryOperatorToken, NewlineToken, ObjectIdToken, TypeIdToken, DispatchToken, ArrowToken,
+               BracketToken, ColonToken, SemiColonToken, ComparatorToken, CommaToken, DoubleQuoteToken, WhitespaceToken]
 
 
 # Converts a string into a list of tokens
@@ -189,7 +188,6 @@ def tokenise(string):
 
     # Iterate through all regex matches
     for match in re.finditer(master_regex, string):
-        column = 0
         name = match.lastgroup      # Name of token that was matched
 
         if name == 'NewlineToken':
@@ -201,8 +199,11 @@ def tokenise(string):
         elif name == 'WhitespaceToken':
             # Skip whitespace tokens
             continue
-        else:
-            column = match.start() - line_start + 1
+        elif name == 'UnknownToken':
+            # Raise a lexing error
+            pass
+
+        column = match.start() - line_start + 1
 
         # Get the actual match
         value = match.group(name)
@@ -215,8 +216,9 @@ def tokenise(string):
         tokens.append(token)
 
     # Append the EOF token
-    tokens.append(EOFToken(None, line + 1, 0))
+    tokens.append(EOFToken('$', line + 1, 0))
     return tokens, errors
 
 # TODO: Report lexing errors here???
+# TODO: Report strings EOF
 # TODO: Doesn't actually catch double quotes

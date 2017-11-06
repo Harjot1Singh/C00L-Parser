@@ -1,7 +1,8 @@
 Class A2I {
 
      c2i(char : String) : Int {
-	if char = "0" then 0 else
+	 if not isvoid a * sded - eded + not b  then x + y * n +d
+	 else
 	if char = "1" then 1 else
 	if char = "2" then 2 else
         if char = "3" then 3 else

@@ -47,43 +47,53 @@ def parse(token_lst):
 
 # Parse and check productions, by choosing the correct
 # production using the first+/predict set in `predict_dict`
-def parse_next(predict_dict, token_iter):
+def parse_next(predict_dict, token_iter, name):
     next_token = token_iter.lookahead()
 
+    logger.header('Entering non-terminal', name)
+
     for predict_set in predict_dict:
+        if None in predict_set:
+            continue
+
         try:
             # Check if lookahead token is in the first+ set, will throw an exception if not
             next(required_token for required_token in predict_set if compare_token(next_token, required_token))
 
-            # Pull next productions as list of expected tokens
             production = predict_dict[predict_set]
-            print(next_token)
+            print('Looking for', next_token)
 
+            # Pull next productions as list of expected tokens
             # Empty productions result in consuming the token and moving on
             if production is None:
-                token_iter.next()
+                logger.header('Backing out from non-terminal (e)', name)
                 return
 
             # Go through all the possible terminals/non-terminals in the production
             for terminal in production:
                 # A tuple means it's a terminal, so consume and compare
                 if isinstance(terminal, tuple):
-                    token = token_iter.next()
 
+                    token = token_iter.next()
+                    logger.success(token, 'consumed')
                     if not compare_token(token, terminal):
-                        raise ParseError(token.line, token.column, 'Unexpected token')
+                        raise ParseError(token.line, token.column, 'Unexpected token {}, wanted {}'.format(token, terminal))
 
                 # Otherwise it's a non-terminal, so call it
                 else:
                     terminal(token_iter)
 
+            logger.header('Backing out from non-terminal', name)
             return
-
         # No more tokens left in the stream
         except StopIteration:
             continue
 
-    raise ParseError(next_token.line, next_token.column, 'No matches???')
+    if frozenset({None}) in predict_dict:
+        logger.header('Hi, in', name)
+        # return
+
+    raise ParseError(next_token.line, next_token.column, 'No matches for {} in non-terminal {}'.format(next_token, name))
 
 
 # Compares a token to a required token
@@ -97,13 +107,13 @@ def compare_token(token, required):
         return isinstance(token, required_token_type) and token.val() == required_value
 
 
+# Decorator to execute the same functions on each non-terminal production
 def nonterminal_decorator(production):
     def wrapper(token_iter):
-        print(production.__name__)
         try:
-            return parse_next(production(), token_iter)
+            return parse_next(production(), token_iter, production.__name__)
         except ParseError as err:
-            logger.info(err.message)
+            logger.error(err.message)
 
     return wrapper
 
@@ -130,7 +140,8 @@ def program():
 def programs():
     return {
         frozenset({(KeywordToken, 'class')}): [program],
-        frozenset({(EOFToken, None)}): None
+        frozenset({(EOFToken, None)}): None,
+        frozenset({None}): None
     }
 
 
@@ -156,7 +167,7 @@ def class_detail():
 @nonterminal_decorator
 def bracket_feature():
     return {
-        frozenset({(BracketToken, '{')}): [(BracketToken, '{'), optional_bracket_feature]
+        frozenset({(BracketToken, '{')}): [(BracketToken, '{'), optional_bracket_feature, (BracketToken, '}')]
     }
 
 
@@ -166,7 +177,8 @@ def bracket_feature():
 def optional_bracket_feature():
     return {
         frozenset({(ObjectIdToken, None)}): [class_feature],
-        frozenset({(BracketToken, '}')}): None
+        frozenset({(BracketToken, '}')}): None,
+        frozenset({None}): None
     }
 
 
@@ -184,7 +196,8 @@ def class_feature():
 def class_features():
     return {
         frozenset({(ObjectIdToken, None)}): [class_feature],
-        frozenset({(BracketToken, '}')}): None
+        frozenset({(BracketToken, '}')}): None,
+        frozenset({None}): None
     }
 
 
@@ -204,6 +217,7 @@ def feature_details():
         frozenset({(BracketToken, '(')}): [
             (BracketToken, '('),
             optional_features,
+            (BracketToken, ')'),
             (ColonToken, None),
             (TypeIdToken, None),
             (BracketToken, '{'),
@@ -220,7 +234,8 @@ def feature_details():
 def optional_features():
     return {
         frozenset({(ObjectIdToken, None)}): [feature_formal],
-        frozenset({(BracketToken, ')')}): None
+        frozenset({(BracketToken, ')')}): None,
+        frozenset({None}): None
     }
 
 
@@ -230,7 +245,8 @@ def optional_features():
 def optional_expr():
     return {
         frozenset({(AssignmentToken, None)}): [(AssignmentToken, None), expr],
-        frozenset({(CommaToken, None), (KeywordToken, 'in'), (SemiColonToken, None)}): None
+        frozenset({(CommaToken, None), (KeywordToken, 'in'), (SemiColonToken, None)}): None,
+        frozenset({None}): None
     }
 
 
@@ -248,7 +264,8 @@ def feature_formal():
 def feature_formals():
     return {
         frozenset({(CommaToken, None)}): [(CommaToken, None), feature_formal],
-        frozenset({(BracketToken, ')')}): None
+        frozenset({(BracketToken, ')')}): None,
+        frozenset({None}): None
     }
 
 
@@ -306,7 +323,7 @@ def expr():
             (UnaryOperatorToken, None),
             (StringToken, None),
             (IntegerToken, None),
-            (BooleanToken, None)}): [assign_term, expr_rr]
+            (BooleanToken, None)}): [not_term, expr_rr]
     }
 
 
@@ -329,7 +346,9 @@ def expr_rr():
         frozenset({(DispatchToken, '.')}): [
             (DispatchToken, '.'),
             (ObjectIdToken, None),
+            (BracketToken, '('),
             optional_comma_expr,
+            (BracketToken, ')'),
             expr_rr
         ],
         frozenset({
@@ -340,14 +359,15 @@ def expr_rr():
             (KeywordToken, 'fi'),
             (KeywordToken, 'loop'),
             (KeywordToken, 'pool'),
-            (DispatchToken, None),
+            # (DispatchToken, None),
             (KeywordToken, 'of'),
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in'),
             (BinaryOperatorToken, None),
             (ComparatorToken, None)
-        }): None
+        }): None,
+        frozenset({None}): None
     }
 
 
@@ -365,7 +385,8 @@ def id_type_arrow():
 def id_type_arrows():
     return {
         frozenset({(ObjectIdToken, None)}): [id_type_arrow],
-        frozenset({(KeywordToken, 'esac')}): None
+        frozenset({(KeywordToken, 'esac')}): None,
+        frozenset({None}): None
     }
 
 
@@ -383,7 +404,8 @@ def id_type_expr():
 def id_type_exprs():
     return {
         frozenset({(CommaToken, None)}): [(CommaToken, None), id_type_expr],
-        frozenset({(KeywordToken, 'in')}): None
+        frozenset({(KeywordToken, 'in')}): None,
+        frozenset({None}): None
     }
 
 
@@ -400,12 +422,14 @@ def optional_comma_expr():
             (KeywordToken, 'case'),
             (KeywordToken, 'new'),
             (BracketToken, '('),
+            (ObjectIdToken, None),
             (UnaryOperatorToken, None),
             (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
         }): [comma_expr],
-        frozenset({(BracketToken, ')')}): None
+        frozenset({(BracketToken, ')')}): None,
+        frozenset({None}): None
     }
 
 
@@ -421,6 +445,7 @@ def comma_expr():
             (KeywordToken, 'case'),
             (KeywordToken, 'new'),
             (BracketToken, '('),
+            (ObjectIdToken, None),
             (UnaryOperatorToken, None),
             (IntegerToken, None),
             (StringToken, None),
@@ -435,7 +460,8 @@ def comma_expr():
 def comma_exprs():
     return {
         frozenset({(CommaToken, None)}): [(CommaToken, None), comma_expr],
-        frozenset({(BracketToken, ')')}): None
+        frozenset({(BracketToken, ')')}): None,
+        frozenset({None}): None
     }
 
 
@@ -451,6 +477,7 @@ def semicolon_expr():
             (KeywordToken, 'case'),
             (KeywordToken, 'new'),
             (BracketToken, '('),
+            (ObjectIdToken, None),
             (UnaryOperatorToken, None),
             (IntegerToken, None),
             (StringToken, None),
@@ -472,15 +499,18 @@ def semicolon_exprs():
             (KeywordToken, 'case'),
             (KeywordToken, 'new'),
             (BracketToken, '('),
+            (ObjectIdToken, None),
             (UnaryOperatorToken, None),
             (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
         }): [semicolon_expr],
-        frozenset({(BracketToken, '}')}): None
+        frozenset({(BracketToken, '}')}): None,
+        frozenset({None}): None
     }
 
 
+# TODO: Prepare to remove?
 # ID <- not_term                            ID
 # not_term                                  not, isvoid, ~, ID, integer, string, true, false
 @nonterminal_decorator
@@ -501,11 +531,12 @@ def assign_term():
 @nonterminal_decorator
 def not_term():
     return {
-        frozenset({(UnaryOperatorToken, 'not')}): [(UnaryOperatorToken, 'not'), compare_term],
+        frozenset({(UnaryOperatorToken, 'not')}): [(UnaryOperatorToken, 'not'), expr],
         frozenset({
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
+            (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
         }): [compare_term]
@@ -520,6 +551,7 @@ def compare_term():
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
+            (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
         }): [add_term, compare_term_rr]
@@ -533,9 +565,8 @@ def compare_term():
 @nonterminal_decorator
 def compare_term_rr():
     return {
-        frozenset({(ComparatorToken, '<=')}): [(ComparatorToken, '<='), compare_term_rr],
-        frozenset({(ComparatorToken, '<')}): [(ComparatorToken, '<'), compare_term_rr],
-        frozenset({(ComparatorToken, '=')}): [(ComparatorToken, '='), compare_term_rr],
+        frozenset({(ComparatorToken, None)}): [(ComparatorToken, None), expr],
+        # frozenset({(ComparatorToken, None)}): [(ComparatorToken, None), add_term, compare_term_rr],
         frozenset({
             (DispatchToken, None),
             (SemiColonToken, None),
@@ -549,7 +580,8 @@ def compare_term_rr():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in')
-        }): None
+        }): None,
+        frozenset({None}): None
     }
 
 
@@ -561,6 +593,7 @@ def add_term():
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
+            (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
         }): [multi_term, add_term_rr]
@@ -573,8 +606,10 @@ def add_term():
 @nonterminal_decorator
 def add_term_rr():
     return {
-        frozenset({(BinaryOperatorToken, '+')}): [(BinaryOperatorToken, '+'), multi_term, add_term_rr],
-        frozenset({(BinaryOperatorToken, '-')}): [(BinaryOperatorToken, '-'), multi_term, add_term_rr],
+        # frozenset({(BinaryOperatorToken, '+')}): [(BinaryOperatorToken, '+'), multi_term, add_term_rr],
+        frozenset({(BinaryOperatorToken, '+')}): [(BinaryOperatorToken, '+'), expr],
+        frozenset({(BinaryOperatorToken, '-')}): [(BinaryOperatorToken, '-'), expr],
+        # frozenset({(BinaryOperatorToken, '-')}): [(BinaryOperatorToken, '-'), multi_term, add_term_rr],
         frozenset({
             (ComparatorToken, None),
             (DispatchToken, None),
@@ -589,7 +624,8 @@ def add_term_rr():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in')
-        }): None
+        }): None,
+        frozenset({None}): None
     }
 
 
@@ -600,6 +636,7 @@ def multi_term():
         frozenset({
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
+            (ObjectIdToken, None),
             (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
@@ -613,8 +650,10 @@ def multi_term():
 @nonterminal_decorator
 def multi_term_rr():
     return {
-        frozenset({(BinaryOperatorToken, '*')}): [(BinaryOperatorToken, '*'), isvoid_term, multi_term_rr],
-        frozenset({(BinaryOperatorToken, '/')}): [(BinaryOperatorToken, '/'), isvoid_term, multi_term_rr],
+        # frozenset({(BinaryOperatorToken, '*')}): [(BinaryOperatorToken, '*'), isvoid_term, multi_term_rr],
+        frozenset({(BinaryOperatorToken, '*')}): [(BinaryOperatorToken, '*'), expr],
+        frozenset({(BinaryOperatorToken, '/')}): [(BinaryOperatorToken, '/'), expr],
+        # frozenset({(BinaryOperatorToken, '/')}): [(BinaryOperatorToken, '/'), isvoid_term, multi_term_rr],
         frozenset({
             (BinaryOperatorToken, '+'),
             (BinaryOperatorToken, '-'),
@@ -631,7 +670,8 @@ def multi_term_rr():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in')
-        }): None
+        }): None,
+        frozenset({None}): None
     }
 
 
@@ -640,7 +680,7 @@ def multi_term_rr():
 @nonterminal_decorator
 def isvoid_term():
     return {
-        frozenset({(UnaryOperatorToken, 'isvoid')}): [(UnaryOperatorToken, 'isvoid'), tilde_term],
+        frozenset({(UnaryOperatorToken, 'isvoid')}): [(UnaryOperatorToken, 'isvoid'), expr],
         frozenset({
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
@@ -656,7 +696,7 @@ def isvoid_term():
 @nonterminal_decorator
 def tilde_term():
     return {
-        frozenset({(UnaryOperatorToken, '~')}): [(UnaryOperatorToken, '~'), factor],
+        frozenset({(UnaryOperatorToken, '~')}): [(UnaryOperatorToken, '~'), expr],
         frozenset({
             (ObjectIdToken, None),
             (IntegerToken, None),
@@ -674,19 +714,23 @@ def tilde_term():
 @nonterminal_decorator
 def factor():
     return {
-        frozenset({(ObjectIdToken, None)}): [ObjectIdToken, factor_id],
+        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), factor_id],
         frozenset({(IntegerToken, None)}): [(IntegerToken, None)],
         frozenset({(StringToken, None)}): [(StringToken, None)],
         frozenset({(BooleanToken, None)}): [(BooleanToken, None)],
+        # frozenset({None}): [expr]
     }
 
 
-# ( optional_comma_expr ) expr_rr           (
+# ( optional_comma_expr )                   (
 # ε                                         *, /, +, -, <=, <, =, @, ., ;, ,, then, else, fi, loop, pool, of, ), }, in
+# TODO: temp
+# -> expr                                   ->
 @nonterminal_decorator
 def factor_id():
     return {
-        frozenset({(BracketToken, ')')}): [(BracketToken, '('), optional_comma_expr, (BracketToken, ')'), expr_rr],
+        frozenset({(BracketToken, '(')}): [(BracketToken, '('), optional_comma_expr, (BracketToken, ')')],
+        frozenset({(AssignmentToken, None)}): [(AssignmentToken, None), expr],
         frozenset({
             (BinaryOperatorToken, None),
             (ComparatorToken, None),
@@ -702,5 +746,6 @@ def factor_id():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in'),
-        }): None
+        }): None,
+        frozenset({None}): None
     }
