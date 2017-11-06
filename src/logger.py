@@ -1,7 +1,4 @@
 # Simple logging functions with colour support
-
-
-# Sourced and modified from https://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
 class BackgroundColours:
     BLUE = '\033[94m'
     GREEN = '\033[92m'

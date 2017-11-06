@@ -64,7 +64,7 @@ class ObjectIdToken(BaseToken):
 # Anything that's not \0
 # Strings are found in double-quotes, but we don't want to capture these
 class StringToken(BaseToken):
-    regex = r'(?!(\0))(?:")(.|\\\n)*(?:")'
+    regex = r'(?!(\0))(?:")(.|\\\n)*?(?:")'
 
 
 # Token for an integer value

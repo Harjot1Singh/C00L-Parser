@@ -1,7 +1,9 @@
 Class A2I {
 
      c2i(char : String) : Int {
-	 if not isvoid a * sded - eded + not b  then x + y * n +d
+
+	 if (a) + {(b * c); 2+2; "lol"; av
+	  <- a.as(s); }  then x + y * n +d
 	 else
 	if char = "1" then 1 else
 	if char = "2" then 2 else

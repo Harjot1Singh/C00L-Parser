@@ -1,5 +1,6 @@
 import logger
 from tokens import *
+from ast import *
 
 
 # Error class for general parse errors
@@ -40,7 +41,8 @@ def parse(token_lst):
     # Setup iterator with lookahead functionality
     iterator = PeekableIterator(token_lst)
 
-    program(iterator)
+    x = program(iterator)
+    print(x)
 
     return [], []
 
@@ -50,7 +52,8 @@ def parse(token_lst):
 def parse_next(predict_dict, token_iter, name):
     next_token = token_iter.lookahead()
 
-    logger.header('Entering non-terminal', name)
+    # logger.header('Entering non-terminal', name)
+    errors = []
 
     for predict_set in predict_dict:
         if None in predict_set:
@@ -61,12 +64,12 @@ def parse_next(predict_dict, token_iter, name):
             next(required_token for required_token in predict_set if compare_token(next_token, required_token))
 
             production = predict_dict[predict_set]
-            print('Looking for', next_token)
+            # logger.info('Looking for {}'.format(next_token))
 
             # Pull next productions as list of expected tokens
             # Empty productions result in consuming the token and moving on
             if production is None:
-                logger.header('Backing out from non-terminal (e)', name)
+                # logger.header('Backing out from non-terminal (e)', name)
                 return
 
             # Go through all the possible terminals/non-terminals in the production
@@ -75,25 +78,24 @@ def parse_next(predict_dict, token_iter, name):
                 if isinstance(terminal, tuple):
 
                     token = token_iter.next()
-                    logger.success(token, 'consumed')
+                    # logger.success(token, 'consumed')
                     if not compare_token(token, terminal):
-                        raise ParseError(token.line, token.column, 'Unexpected token {}, wanted {}'.format(token, terminal))
+                        raise ParseError(token.line, token.column,
+                                         'Unexpected token {}, wanted {}'.format(token, terminal))
 
                 # Otherwise it's a non-terminal, so call it
                 else:
                     terminal(token_iter)
 
-            logger.header('Backing out from non-terminal', name)
-            return
+            # logger.header('Backing out from non-terminal', name)
+            return name + str(next_token)
+
         # No more tokens left in the stream
         except StopIteration:
             continue
 
-    if frozenset({None}) in predict_dict:
-        logger.header('Hi, in', name)
-        # return
-
-    raise ParseError(next_token.line, next_token.column, 'No matches for {} in non-terminal {}'.format(next_token, name))
+    raise ParseError(next_token.line, next_token.column,
+                     'No matches for {} in non-terminal {}'.format(next_token, name))
 
 
 # Compares a token to a required token
@@ -113,7 +115,7 @@ def nonterminal_decorator(production):
         try:
             return parse_next(production(), token_iter, production.__name__)
         except ParseError as err:
-            logger.error('error',err.message)
+            logger.error('error', err.message, token_iter.lookahead())
 
     return wrapper
 
@@ -271,52 +273,22 @@ def formal():
     }
 
 
-# if expr then expr else expr fi expr_rr    if
-# while expr loop expr pool expr_rr         while
-# { semicolon_expr } expr_rr                {
-# let id_type_expr in expr expr_rr          let
-# case expr of id_type_arrow esac expr_rr   case
-# new TYPE expr_rr                          new
-# ( expr ) expr_rr                          (
 # assign_term expr_rr                       ID, not, isvoid, ~, integer, string, true, false
 @nonterminal_decorator
 def expr():
     return {
-        frozenset({(KeywordToken, 'if')}): [
-            (KeywordToken, 'if'),
-            expr,
-            (KeywordToken, 'then'),
-            expr,
-            (KeywordToken, 'else'),
-            expr,
-            (KeywordToken, 'fi'),
-            expr_rr
-        ],
-        frozenset({(KeywordToken, 'while')}): [
-            (KeywordToken, 'while'),
-            expr,
-            (KeywordToken, 'loop'),
-            expr,
-            (KeywordToken, 'pool'),
-            expr_rr
-        ],
-        frozenset({(BracketToken, '{')}): [(BracketToken, '{'), semicolon_expr, (BracketToken, '}'), expr_rr],
-        frozenset({(KeywordToken, 'let')}): [(KeywordToken, 'let'), id_type_expr, (KeywordToken, 'in'), expr, expr_rr],
-        frozenset({(KeywordToken, 'case')}): [
-            (KeywordToken, 'case'),
-            expr,
-            (KeywordToken, 'of'),
-            id_type_arrow,
-            (KeywordToken, 'esac'),
-            expr_rr
-        ],
-        frozenset({(KeywordToken, 'new')}): [(KeywordToken, 'new'), (TypeIdToken, None), expr_rr],
-        frozenset({(BracketToken, '(')}): [(BracketToken, '('), expr, (BracketToken, ')'), expr_rr],
         frozenset({
             (ObjectIdToken, None),
             (UnaryOperatorToken, None),
             (StringToken, None),
             (IntegerToken, None),
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (BooleanToken, None)}): [not_term, expr_rr]
     }
 
@@ -353,7 +325,6 @@ def expr_rr():
             (KeywordToken, 'fi'),
             (KeywordToken, 'loop'),
             (KeywordToken, 'pool'),
-            # (DispatchToken, None),
             (KeywordToken, 'of'),
             (BracketToken, ')'),
             (BracketToken, '}'),
@@ -498,29 +469,20 @@ def semicolon_exprs():
     }
 
 
-# TODO: Prepare to remove?
-# ID <- not_term                            ID
-# not_term                                  not, isvoid, ~, ID, integer, string, true, false
-@nonterminal_decorator
-def assign_term():
-    return {
-        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), (AssignmentToken, None), not_term],
-        frozenset({
-            (UnaryOperatorToken, None),
-            (ObjectIdToken, None),
-            (StringToken, None),
-            (BooleanToken, None)
-        }): [not_term]
-    }
-
-
 # not compare_term                          not
-# compare_term                              isvoid, ~, ID, integer, string, true, false
+# compare_term                              isvoid, ~, ID, integer, string, true, false, if, while, let, case, new, {, (
 @nonterminal_decorator
 def not_term():
     return {
         frozenset({(UnaryOperatorToken, 'not')}): [(UnaryOperatorToken, 'not'), expr],
         frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
@@ -536,13 +498,20 @@ def not_term():
 def compare_term():
     return {
         frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
             (IntegerToken, None),
             (StringToken, None),
             (BooleanToken, None)
-        }): [add_term, compare_term_rr]
+        }): [add_term, compare_term_rr, expr_rr]
     }
 
 
@@ -554,7 +523,6 @@ def compare_term():
 def compare_term_rr():
     return {
         frozenset({(ComparatorToken, None)}): [(ComparatorToken, None), expr],
-        # frozenset({(ComparatorToken, None)}): [(ComparatorToken, None), add_term, compare_term_rr],
         frozenset({
             (DispatchToken, None),
             (SemiColonToken, None),
@@ -572,11 +540,18 @@ def compare_term_rr():
     }
 
 
-# multi_term add_term_rr                    isvoid, ~, ID, integer, string, true, false
+# multi_term add_term_rr                    isvoid, ~, ID, integer, string, true, false, if, while, let, case, new, {, (
 @nonterminal_decorator
 def add_term():
     return {
-        frozenset({
+        frozenset({(
+            KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
@@ -593,10 +568,8 @@ def add_term():
 @nonterminal_decorator
 def add_term_rr():
     return {
-        # frozenset({(BinaryOperatorToken, '+')}): [(BinaryOperatorToken, '+'), multi_term, add_term_rr],
         frozenset({(BinaryOperatorToken, '+')}): [(BinaryOperatorToken, '+'), expr],
         frozenset({(BinaryOperatorToken, '-')}): [(BinaryOperatorToken, '-'), expr],
-        # frozenset({(BinaryOperatorToken, '-')}): [(BinaryOperatorToken, '-'), multi_term, add_term_rr],
         frozenset({
             (ComparatorToken, None),
             (DispatchToken, None),
@@ -615,11 +588,18 @@ def add_term_rr():
     }
 
 
-# isvoid_term multi_term_rr                 isvoid, ~, ID, integer, string, true, false
+# isvoid_term multi_term_rr                 isvoid, ~, ID, integer, string, true, false, if, while, let, case, new, {, (
 @nonterminal_decorator
 def multi_term():
     return {
         frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (UnaryOperatorToken, 'isvoid'),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
@@ -636,10 +616,8 @@ def multi_term():
 @nonterminal_decorator
 def multi_term_rr():
     return {
-        # frozenset({(BinaryOperatorToken, '*')}): [(BinaryOperatorToken, '*'), isvoid_term, multi_term_rr],
         frozenset({(BinaryOperatorToken, '*')}): [(BinaryOperatorToken, '*'), expr],
         frozenset({(BinaryOperatorToken, '/')}): [(BinaryOperatorToken, '/'), expr],
-        # frozenset({(BinaryOperatorToken, '/')}): [(BinaryOperatorToken, '/'), isvoid_term, multi_term_rr],
         frozenset({
             (BinaryOperatorToken, '+'),
             (BinaryOperatorToken, '-'),
@@ -661,12 +639,19 @@ def multi_term_rr():
 
 
 # isvoid tilde_term                         isvoid
-# tilde_term                                ~, ID, integer, string, true, false
+# tilde_term                                ~, ID, integer, string, true, false, if, while, let, case, new, {, (
 @nonterminal_decorator
 def isvoid_term():
     return {
         frozenset({(UnaryOperatorToken, 'isvoid')}): [(UnaryOperatorToken, 'isvoid'), expr],
         frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (UnaryOperatorToken, '~'),
             (ObjectIdToken, None),
             (IntegerToken, None),
@@ -677,12 +662,19 @@ def isvoid_term():
 
 
 # ~ factor                                  ~
-# factor                                    ID, integer, string, true, false
+# factor                                    ID, integer, string, true, false, if, while, let, case, new, {, (
 @nonterminal_decorator
 def tilde_term():
     return {
         frozenset({(UnaryOperatorToken, '~')}): [(UnaryOperatorToken, '~'), expr],
         frozenset({
+            (KeywordToken, 'if'),
+            (KeywordToken, 'while'),
+            (KeywordToken, 'let'),
+            (KeywordToken, 'case'),
+            (KeywordToken, 'new'),
+            (BracketToken, '{'),
+            (BracketToken, '('),
             (ObjectIdToken, None),
             (IntegerToken, None),
             (StringToken, None),
@@ -691,6 +683,13 @@ def tilde_term():
     }
 
 
+# if expr then expr else expr fi expr_rr    if
+# while expr loop expr pool expr_rr         while
+# { semicolon_expr } expr_rr                {
+# let id_type_expr in expr expr_rr          let
+# case expr of id_type_arrow esac expr_rr   case
+# new TYPE expr_rr                          new
+# ( expr ) expr_rr                          (
 # ID factor_id                              ID
 # integer	                                integer
 # string	                                string
@@ -699,18 +698,46 @@ def tilde_term():
 @nonterminal_decorator
 def factor():
     return {
-        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), factor_id],
-        frozenset({(IntegerToken, None)}): [(IntegerToken, None)],
-        frozenset({(StringToken, None)}): [(StringToken, None)],
-        frozenset({(BooleanToken, None)}): [(BooleanToken, None)],
-        # frozenset({None}): [expr]
+        frozenset({(KeywordToken, 'if')}): [
+            (KeywordToken, 'if'),
+            expr,
+            (KeywordToken, 'then'),
+            expr,
+            (KeywordToken, 'else'),
+            expr,
+            (KeywordToken, 'fi'),
+            expr_rr
+        ],
+        frozenset({(KeywordToken, 'while')}): [
+            (KeywordToken, 'while'),
+            expr,
+            (KeywordToken, 'loop'),
+            expr,
+            (KeywordToken, 'pool'),
+            expr_rr
+        ],
+        frozenset({(BracketToken, '{')}): [(BracketToken, '{'), semicolon_expr, (BracketToken, '}'), expr_rr],
+        frozenset({(KeywordToken, 'let')}): [(KeywordToken, 'let'), id_type_expr, (KeywordToken, 'in'), expr, expr_rr],
+        frozenset({(KeywordToken, 'case')}): [
+            (KeywordToken, 'case'),
+            expr,
+            (KeywordToken, 'of'),
+            id_type_arrow,
+            (KeywordToken, 'esac'),
+            expr_rr
+        ],
+        frozenset({(KeywordToken, 'new')}): [(KeywordToken, 'new'), (TypeIdToken, None), expr_rr],
+        frozenset({(BracketToken, '(')}): [(BracketToken, '('), expr, (BracketToken, ')'), expr_rr],
+        frozenset({(ObjectIdToken, None)}): [(ObjectIdToken, None), factor_id, expr_rr],
+        frozenset({(IntegerToken, None)}): [(IntegerToken, None), expr_rr],
+        frozenset({(StringToken, None)}): [(StringToken, None), expr_rr],
+        frozenset({(BooleanToken, None)}): [(BooleanToken, None), expr_rr]
     }
 
 
 # ( optional_comma_expr )                   (
 # ε                                         *, /, +, -, <=, <, =, @, ., ;, ,, then, else, fi, loop, pool, of, ), }, in
-# TODO: temp
-# -> expr                                   ->
+# <- expr                                   <-
 @nonterminal_decorator
 def factor_id():
     return {

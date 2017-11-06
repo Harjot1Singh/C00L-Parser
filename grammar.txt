@@ -28,7 +28,7 @@ feature_formals         ->  , feature_formal | EPSILON
 
 formal                  ->  ID : TYPE
 
-expr                    ->  if expr then expr else expr fi expr_rr | while expr loop expr pool expr_rr | { semicolon_expr } expr_rr | let id_type_expr in expr expr_rr | case expr of id_type_arrow esac expr_rr | new TYPE expr_rr | ( expr ) expr_rr | not_term expr_rr
+expr                    ->  not_term expr_rr
 
 expr_rr                 ->  @ TYPE . ID ( optional_comma_expr ) expr_rr | . ID ( optional_comma_expr ) expr_rr | EPSILON
 
@@ -68,6 +68,6 @@ isvoid_term             ->  isvoid expr | tilde_term
 
 tilde_term              ->  ~ expr | factor
 
-factor                  ->  ID factor_id | integer | string | true | false
+factor                  ->  ID factor_id expr_rr | integer expr_rr | string expr_rr | true expr_rr | false expr_rr | if expr then expr else expr fi expr_rr | while expr loop expr pool expr_rr | { semicolon_expr } expr_rr | let id_type_expr in expr expr_rr | case expr of id_type_arrow esac expr_rr | new TYPE expr_rr | ( expr ) expr_rr
 
-factor_id               ->  <- expr | ( optional_comma_expr ) expr_rr | EPSILON
+factor_id               ->  <- expr | ( optional_comma_expr ) | EPSILON
