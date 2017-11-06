@@ -113,7 +113,7 @@ def nonterminal_decorator(production):
         try:
             return parse_next(production(), token_iter, production.__name__)
         except ParseError as err:
-            logger.error(err.message)
+            logger.error('error',err.message)
 
     return wrapper
 
@@ -140,8 +140,7 @@ def program():
 def programs():
     return {
         frozenset({(KeywordToken, 'class')}): [program],
-        frozenset({(EOFToken, None)}): None,
-        frozenset({None}): None
+        frozenset({(EOFToken, None)}): None
     }
 
 
@@ -177,8 +176,7 @@ def bracket_feature():
 def optional_bracket_feature():
     return {
         frozenset({(ObjectIdToken, None)}): [class_feature],
-        frozenset({(BracketToken, '}')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, '}')}): None
     }
 
 
@@ -196,8 +194,7 @@ def class_feature():
 def class_features():
     return {
         frozenset({(ObjectIdToken, None)}): [class_feature],
-        frozenset({(BracketToken, '}')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, '}')}): None
     }
 
 
@@ -234,8 +231,7 @@ def feature_details():
 def optional_features():
     return {
         frozenset({(ObjectIdToken, None)}): [feature_formal],
-        frozenset({(BracketToken, ')')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, ')')}): None
     }
 
 
@@ -245,8 +241,7 @@ def optional_features():
 def optional_expr():
     return {
         frozenset({(AssignmentToken, None)}): [(AssignmentToken, None), expr],
-        frozenset({(CommaToken, None), (KeywordToken, 'in'), (SemiColonToken, None)}): None,
-        frozenset({None}): None
+        frozenset({(CommaToken, None), (KeywordToken, 'in'), (SemiColonToken, None)}): None
     }
 
 
@@ -264,8 +259,7 @@ def feature_formal():
 def feature_formals():
     return {
         frozenset({(CommaToken, None)}): [(CommaToken, None), feature_formal],
-        frozenset({(BracketToken, ')')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, ')')}): None
     }
 
 
@@ -366,8 +360,7 @@ def expr_rr():
             (KeywordToken, 'in'),
             (BinaryOperatorToken, None),
             (ComparatorToken, None)
-        }): None,
-        frozenset({None}): None
+        }): None
     }
 
 
@@ -385,8 +378,7 @@ def id_type_arrow():
 def id_type_arrows():
     return {
         frozenset({(ObjectIdToken, None)}): [id_type_arrow],
-        frozenset({(KeywordToken, 'esac')}): None,
-        frozenset({None}): None
+        frozenset({(KeywordToken, 'esac')}): None
     }
 
 
@@ -404,8 +396,7 @@ def id_type_expr():
 def id_type_exprs():
     return {
         frozenset({(CommaToken, None)}): [(CommaToken, None), id_type_expr],
-        frozenset({(KeywordToken, 'in')}): None,
-        frozenset({None}): None
+        frozenset({(KeywordToken, 'in')}): None
     }
 
 
@@ -428,8 +419,7 @@ def optional_comma_expr():
             (StringToken, None),
             (BooleanToken, None)
         }): [comma_expr],
-        frozenset({(BracketToken, ')')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, ')')}): None
     }
 
 
@@ -460,8 +450,7 @@ def comma_expr():
 def comma_exprs():
     return {
         frozenset({(CommaToken, None)}): [(CommaToken, None), comma_expr],
-        frozenset({(BracketToken, ')')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, ')')}): None
     }
 
 
@@ -505,8 +494,7 @@ def semicolon_exprs():
             (StringToken, None),
             (BooleanToken, None)
         }): [semicolon_expr],
-        frozenset({(BracketToken, '}')}): None,
-        frozenset({None}): None
+        frozenset({(BracketToken, '}')}): None
     }
 
 
@@ -580,8 +568,7 @@ def compare_term_rr():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in')
-        }): None,
-        frozenset({None}): None
+        }): None
     }
 
 
@@ -624,8 +611,7 @@ def add_term_rr():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in')
-        }): None,
-        frozenset({None}): None
+        }): None
     }
 
 
@@ -670,8 +656,7 @@ def multi_term_rr():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in')
-        }): None,
-        frozenset({None}): None
+        }): None
     }
 
 
@@ -746,6 +731,5 @@ def factor_id():
             (BracketToken, ')'),
             (BracketToken, '}'),
             (KeywordToken, 'in'),
-        }): None,
-        frozenset({None}): None
+        }): None
     }

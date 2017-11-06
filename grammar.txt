@@ -50,23 +50,23 @@ semicolon_expr          ->  expr ; semicolon_exprs
 
 semicolon_exprs         ->  semicolon_expr | EPSILON
 
-not_term                ->  not compare_term | compare_term
+not_term                ->  not expr | compare_term
 
 compare_term            ->  add_term compare_term_rr
 
-compare_term_rr         ->  <= expr compare_term_rr | < expr compare_term_rr | = expr compare_term_rr | EPSILON
+compare_term_rr         ->  <= expr | < expr | = expr | EPSILON
 
 add_term                ->  multi_term add_term_rr
 
-add_term_rr             ->  + expr add_term_rr | - expr add_term_rr | EPSILON
+add_term_rr             ->  + expr | - expr | EPSILON
 
 multi_term              ->  isvoid_term multi_term_rr
 
-multi_term_rr           ->  * expr multi_term_rr | / expr multi_term_rr | EPSILON
+multi_term_rr           ->  * expr | / expr | EPSILON
 
-isvoid_term             ->  isvoid tilde_term | tilde_term
+isvoid_term             ->  isvoid expr | tilde_term
 
-tilde_term              ->  ~ factor | factor
+tilde_term              ->  ~ expr | factor
 
 factor                  ->  ID factor_id | integer | string | true | false
 
