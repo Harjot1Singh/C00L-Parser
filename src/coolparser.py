@@ -8,20 +8,26 @@ import syntax_parser
 
 # Parser entry point
 def parse(path):
-    try:
-        # Read contents of file
-        with open(path) as file:
-            program_string = file.read()
+    # Read contents of file
+    with open(path) as file:
+        program_string = file.read()
 
-        # Lex character-by-character
-        tokens, errors = tokenise(program_string)
+    # Lex character-by-character
+    tokens, errors = tokenise(program_string)
 
-        # Parse
-        tree, errors = syntax_parser.parse(tokens)
+    # Parse
+    classes, errors = syntax_parser.parse(tokens)
+
+    # Print out classes and method names if there were no errors
+    if not errors:
         logger.success('No errors found')
-    except RuntimeWarning: # defo change to own error
+        for class_name in classes:
+            logger.info(class_name, '-', ', '.join(classes[class_name]))
+
+    # Otherwise, print out the errors
+    else:
         logger.error('Errors found')
-    pass
+        logger.info('\n'.join(errors))
 
 
 # Application entry point

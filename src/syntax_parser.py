@@ -1,6 +1,5 @@
 import logger
 from tokens import *
-from ast import *
 
 
 # Error class for general parse errors
@@ -36,59 +35,53 @@ class PeekableIterator:
         return self._current_val
 
 
+# Stores a list of classes and methods
+classes = {}
+methods = []
+
+
 # Entry point for syntax parsing
 def parse(token_lst):
     # Setup iterator with lookahead functionality
     iterator = PeekableIterator(token_lst)
 
-    x = program(iterator)
-    print(x)
+    program(iterator)
 
-    return [], []
+    return classes, []
 
 
-# Parse and check productions, by choosing the correct
-# production using the first+/predict set in `predict_dict`
+# Parse and check productions, by choosing the correct production using the first+/predict set in `predict_dict`
 def parse_next(predict_dict, token_iter, name):
     next_token = token_iter.lookahead()
 
     # logger.header('Entering non-terminal', name)
-    errors = []
 
+    # Try all the predict sets for the production/non-terminal
     for predict_set in predict_dict:
-        if None in predict_set:
-            continue
-
         try:
             # Check if lookahead token is in the first+ set, will throw an exception if not
             next(required_token for required_token in predict_set if compare_token(next_token, required_token))
 
+            # Pull next productions as list of expected tokens
             production = predict_dict[predict_set]
             # logger.info('Looking for {}'.format(next_token))
 
-            # Pull next productions as list of expected tokens
             # Empty productions result in consuming the token and moving on
             if production is None:
                 # logger.header('Backing out from non-terminal (e)', name)
                 return
 
-            # Go through all the possible terminals/non-terminals in the production
-            for terminal in production:
-                # A tuple means it's a terminal, so consume and compare
-                if isinstance(terminal, tuple):
+            tree = [parse_terminal(terminal, token_iter) for terminal in production]
 
-                    token = token_iter.next()
-                    # logger.success(token, 'consumed')
-                    if not compare_token(token, terminal):
-                        raise ParseError(token.line, token.column,
-                                         'Unexpected token {}, wanted {}'.format(token, terminal))
+            # Special case to store classes and methods
+            global methods
+            if name == 'feature':
+                methods.append(tree[0])
+            elif name == 'class_def':
+                classes[tree[1]] = methods
+                methods = []
 
-                # Otherwise it's a non-terminal, so call it
-                else:
-                    terminal(token_iter)
-
-            # logger.header('Backing out from non-terminal', name)
-            return name + str(next_token)
+            return tree
 
         # No more tokens left in the stream
         except StopIteration:
@@ -96,6 +89,22 @@ def parse_next(predict_dict, token_iter, name):
 
     raise ParseError(next_token.line, next_token.column,
                      'No matches for {} in non-terminal {}'.format(next_token, name))
+
+
+# Go a possible terminals/non-terminal, from a production
+def parse_terminal(terminal, token_iter):
+    # A tuple means it's a terminal, so consume and compare
+    if isinstance(terminal, tuple):
+        token = token_iter.next()
+
+        if not compare_token(token, terminal):
+            raise ParseError(token.line, token.column, 'Unexpected token {}, wanted {}'.format(token, terminal))
+
+        return token.val()
+
+    # Otherwise it's a non-terminal, so call it
+    else:
+        return terminal(token_iter)
 
 
 # Compares a token to a required token
