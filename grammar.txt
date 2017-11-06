@@ -50,8 +50,6 @@ semicolon_expr          ->  expr ; semicolon_exprs
 
 semicolon_exprs         ->  semicolon_expr | EPSILON
 
-assign_term             ->  ID <-  not_term | not_term
-
 not_term                ->  not compare_term | compare_term
 
 compare_term            ->  add_term compare_term_rr
