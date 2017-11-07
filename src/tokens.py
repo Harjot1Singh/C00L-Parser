@@ -173,7 +173,8 @@ class EOFToken(BaseToken):
 # List of token classes in order of required regex matching precedence
 token_types = [StringToken, BooleanToken, KeywordToken, IntegerToken, UnaryOperatorToken, AssignmentToken,
                BinaryOperatorToken, NewlineToken, ObjectIdToken, TypeIdToken, DispatchToken, ArrowToken,
-               BracketToken, ColonToken, SemiColonToken, ComparatorToken, CommaToken, DoubleQuoteToken, WhitespaceToken]
+               BracketToken, ColonToken, SemiColonToken, ComparatorToken, CommaToken, DoubleQuoteToken, WhitespaceToken,
+               UnknownToken]
 
 
 # Converts a string into a list of tokens
@@ -189,6 +190,10 @@ def tokenise(string):
     # Iterate through all regex matches
     for match in re.finditer(master_regex, string):
         name = match.lastgroup      # Name of token that was matched
+        column = match.start() - line_start + 1
+
+        # Get the actual match
+        value = match.group(name)
 
         if name == 'NewlineToken':
             # Bump up the line, and set the start index of the new line
@@ -200,13 +205,9 @@ def tokenise(string):
             # Skip whitespace tokens
             continue
         elif name == 'UnknownToken':
-            # Raise a lexing error
-            pass
-
-        column = match.start() - line_start + 1
-
-        # Get the actual match
-        value = match.group(name)
+            # Counts as a lexing error, report and ignore
+            errors.append('[{}:{}] {}'.format(line, column, 'Unrecognised symbol "{}"'.format(value)))
+            continue
 
         # Get the token class from the named match and instantiate it :-(
         token_class = globals()[name]
@@ -218,7 +219,3 @@ def tokenise(string):
     # Append the EOF token
     tokens.append(EOFToken('$', line + 1, 0))
     return tokens, errors
-
-# TODO: Report lexing errors here???
-# TODO: Report strings EOF
-# TODO: Doesn't actually catch double quotes
