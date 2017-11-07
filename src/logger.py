@@ -30,3 +30,20 @@ def header(*string):
     print(*string)
     print(BackgroundColours.ENDC, end='')
 
+
+# Method to dump a class and its attributes recursively
+def dump(obj, level=0):
+    for attr in vars(obj):
+        val = getattr(obj, attr)
+
+        if isinstance(val, (int, float, str)):
+            info(level * ' ', attr, '->', val)
+
+        elif isinstance(val, list):
+            for v in val:
+                if isinstance(v, (int, float, str)):
+                    info(level * ' ', attr, '->', val)
+                else:
+                    dump(v, level + 1)
+        else:
+            print(level * ' ', attr, '->')

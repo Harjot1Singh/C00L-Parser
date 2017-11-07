@@ -15,15 +15,19 @@ def parse(path):
     # Lex character-by-character
     tokens, lex_errors = tokenise(program_string)
 
-    # Parse
-    classes, parse_errors = syntax_parser.parse(tokens)
+    # Syntax parse
+    program, parse_errors = syntax_parser.parse(tokens)
 
     # Print out classes and method names if there were no errors
     all_errors = lex_errors + parse_errors
+
     if not all_errors:
         logger.success('No errors found')
-        for class_name in classes:
-            logger.info(class_name, '-', ', '.join(classes[class_name]))
+
+        # Iterate through all the classes in the program AST, and collect them
+        for class_def in program:
+            methods = ', '.join([feature.identifier for feature in class_def])
+            logger.info(class_def.class_type, '-', methods)
 
     # Otherwise, print out the errors
     else:

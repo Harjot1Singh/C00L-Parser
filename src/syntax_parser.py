@@ -1,5 +1,5 @@
-import logger
 from tokens import *
+from ast import *
 
 
 # Error class for general parse errors
@@ -38,8 +38,6 @@ class PeekableIterator:
         return self._current_val
 
 
-classes = {}  # Dict of classes->methods
-_methods = [],  # Temporary methods storage
 errors = [],  # Errors encountered
 _panic = False  # Panic mode flag
 
@@ -50,9 +48,8 @@ def parse(token_lst):
     iterator = PeekableIterator(token_lst)
 
     ast = program(iterator)
-    print(ast)
 
-    return classes, []
+    return ast, []
 
 
 # Parse and check productions, by choosing the correct production using the first+/predict set in `predict_dict`
@@ -75,7 +72,7 @@ def parse_next(predict_dict, token_iter, name):
             # Empty productions result in consuming the token and moving on
             if production_tuple is None:
                 # logger.header('Backing out from non-terminal (e)', name)
-                return
+                return []
 
             # Pull out next production as a list of terminals and non-terminals
             # Func describes what the production will return
@@ -101,18 +98,6 @@ def parse_next(predict_dict, token_iter, name):
 
     raise ParseError(next_token, BaseToken, None,
                      'No matches for {} in non-terminal {}'.format(next_token, name))
-
-
-# Collects the classes and methods
-def collect_classes(name, tree):
-    # Special cases of storing classes and methods
-    global _methods, classes
-
-    if name == 'feature':
-        _methods.append(tree[0])
-    elif name == 'class_def':
-        classes[tree[1]] = _methods
-        _methods = []
 
 
 # Go a possible terminals/non-terminal, from a production
@@ -171,7 +156,8 @@ def nonterminal_decorator(production):
 @nonterminal_decorator
 def program():
     return {
-        frozenset({(KeywordToken, 'class')}): ([class_def, (SemiColonToken, None), programs], lambda x: [x[0], [x[2]]])
+        frozenset({(KeywordToken, 'class')}): ([class_def, (SemiColonToken, None), programs],
+                                               lambda x: Program([x[0], *x[2]]))
     }
 
 
@@ -180,7 +166,7 @@ def program():
 @nonterminal_decorator
 def programs():
     return {
-        frozenset({(KeywordToken, 'class')}): ([program], lambda x: x),
+        frozenset({(KeywordToken, 'class')}): ([program], lambda x: x[0]),
         frozenset({(EOFToken, None)}): None
     }
 
@@ -190,7 +176,7 @@ def programs():
 def class_def():
     return {
         frozenset({(KeywordToken, 'class')}): (
-            [(KeywordToken, 'class'), (TypeIdToken, None), class_detail], lambda x: None)
+            [(KeywordToken, 'class'), (TypeIdToken, None), class_detail], lambda x: Class(x[1], *x[2]))
     }
 
 
@@ -199,9 +185,9 @@ def class_def():
 @nonterminal_decorator
 def class_detail():
     return {
-        frozenset({(BracketToken, '{')}): ([bracket_feature], lambda x: None),
+        frozenset({(BracketToken, '{')}): ([bracket_feature], lambda x: [None, x[0]]),
         frozenset({(KeywordToken, 'inherits')}): ([(KeywordToken, 'inherits'), (TypeIdToken, None), bracket_feature],
-                                                  lambda x: None)
+                                                  lambda x: [x[1], x[2]])
     }
 
 
@@ -210,7 +196,7 @@ def class_detail():
 def bracket_feature():
     return {
         frozenset({(BracketToken, '{')}): ([(BracketToken, '{'), optional_bracket_feature, (BracketToken, '}')],
-                                           lambda x: None)
+                                           lambda x: x[1])
     }
 
 
@@ -219,7 +205,7 @@ def bracket_feature():
 @nonterminal_decorator
 def optional_bracket_feature():
     return {
-        frozenset({(ObjectIdToken, None)}): ([class_feature], lambda x: None),
+        frozenset({(ObjectIdToken, None)}): ([class_feature], lambda x: x[0]),
         frozenset({(BracketToken, '}')}): None
     }
 
@@ -228,7 +214,7 @@ def optional_bracket_feature():
 @nonterminal_decorator
 def class_feature():
     return {
-        frozenset({(ObjectIdToken, None)}): ([feature, (SemiColonToken, None), class_features], lambda x: None)
+        frozenset({(ObjectIdToken, None)}): ([feature, (SemiColonToken, None), class_features], lambda x: [x[0], *x[2]])
     }
 
 
@@ -237,7 +223,7 @@ def class_feature():
 @nonterminal_decorator
 def class_features():
     return {
-        frozenset({(ObjectIdToken, None)}): ([class_feature], lambda x: None),
+        frozenset({(ObjectIdToken, None)}): ([class_feature], lambda x: x[0]),
         frozenset({(BracketToken, '}')}): None
     }
 
@@ -246,7 +232,7 @@ def class_features():
 @nonterminal_decorator
 def feature():
     return {
-        frozenset({(ObjectIdToken, None)}): ([(ObjectIdToken, None), feature_details], lambda x: None)
+        frozenset({(ObjectIdToken, None)}): ([(ObjectIdToken, None), feature_details], lambda x: Feature(x[0], *x[1]))
     }
 
 
@@ -264,8 +250,9 @@ def feature_details():
                                                (BracketToken, '{'),
                                                expr,
                                                (BracketToken, '}')
-                                           ], lambda x: None),
-        frozenset({(ColonToken, None)}): ([(ColonToken, None), (TypeIdToken, None), optional_expr], lambda x: None)
+                                           ], lambda x: [x[4], x[1], x[6]]),
+        frozenset({(ColonToken, None)}): ([(ColonToken, None), (TypeIdToken, None), optional_expr],
+                                          lambda x: [x[1], None, x[2]])
     }
 
 
@@ -274,7 +261,7 @@ def feature_details():
 @nonterminal_decorator
 def optional_features():
     return {
-        frozenset({(ObjectIdToken, None)}): ([feature_formal], lambda x: None),
+        frozenset({(ObjectIdToken, None)}): ([feature_formal], lambda x: x[0]),
         frozenset({(BracketToken, ')')}): None
     }
 
@@ -284,7 +271,7 @@ def optional_features():
 @nonterminal_decorator
 def optional_expr():
     return {
-        frozenset({(AssignmentToken, None)}): ([(AssignmentToken, None), expr], lambda x: None),
+        frozenset({(AssignmentToken, None)}): ([(AssignmentToken, None), expr], lambda x: x[1]),
         frozenset({(CommaToken, None), (KeywordToken, 'in'), (SemiColonToken, None)}): None
     }
 
@@ -293,7 +280,7 @@ def optional_expr():
 @nonterminal_decorator
 def feature_formal():
     return {
-        frozenset({(ObjectIdToken, None)}): ([formal, feature_formals], lambda x: None)
+        frozenset({(ObjectIdToken, None)}): ([formal, feature_formals], lambda x: [x[0], *x[1]])
     }
 
 
@@ -302,7 +289,7 @@ def feature_formal():
 @nonterminal_decorator
 def feature_formals():
     return {
-        frozenset({(CommaToken, None)}): ([(CommaToken, None), feature_formal], lambda x: None),
+        frozenset({(CommaToken, None)}): ([(CommaToken, None), feature_formal], lambda x: x[1]),
         frozenset({(BracketToken, ')')}): None
     }
 
@@ -312,11 +299,11 @@ def feature_formals():
 def formal():
     return {
         frozenset({(ObjectIdToken, None)}): (
-            [(ObjectIdToken, None), (ColonToken, None), (TypeIdToken, None)], lambda x: None)
+            [(ObjectIdToken, None), (ColonToken, None), (TypeIdToken, None)], lambda x: Formal(x[0], x[2]))
     }
 
 
-# assign_term expr_rr                       ID, not, isvoid, ~, integer, string, true, false
+# not_term expr_rr                          ID, not, isvoid, ~, integer, string, true, false
 @nonterminal_decorator
 def expr():
     return {
@@ -332,7 +319,7 @@ def expr():
             (KeywordToken, 'new'),
             (BracketToken, '{'),
             (BracketToken, '('),
-            (BooleanToken, None)}): ([not_term, expr_rr], lambda x: None)
+            (BooleanToken, None)}): ([not_term, expr_rr], lambda x: None )
     }
 
 
@@ -785,7 +772,7 @@ def factor():
 def factor_id():
     return {
         frozenset({(BracketToken, '(')}): ([(BracketToken, '('), optional_comma_expr, (BracketToken, ')')],
-                                           lambda x: None),
+                                           lambda x: BracketedExpr(x[1])),
         frozenset({(AssignmentToken, None)}): ([(AssignmentToken, None), expr], lambda x: None),
         frozenset({
             (BinaryOperatorToken, None),

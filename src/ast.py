@@ -9,6 +9,12 @@ class Program(AST):
     def __init__(self, classes):
         self.classes = classes
 
+    def __iter__(self):
+        return iter(self.classes)
+
+    def __str__(self):
+        return '[{}]'.format(', '.join(str(class_def) for class_def in self.classes))
+
 
 # class ::= class TYPE [inherits TYPE] { [[feature; ]]∗
 # Holds the type, optional inherited type, and an optional list of features
@@ -17,6 +23,12 @@ class Class(AST):
         self.class_type = class_type
         self.inherits_type = inherits_type
         self.features = features
+
+    def __iter__(self):
+        return iter(self.features)
+
+    def __str__(self):
+        return 'Class({})'.format(self.class_type)
 
 
 # Wrapper for ID : TYPE [ <- expr ]
