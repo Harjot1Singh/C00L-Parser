@@ -26,8 +26,10 @@ def parse(path):
 
         # Iterate through all the classes in the program AST, and collect them
         for class_def in program:
+            logger.header(class_def.class_type, end=' - ')
+
             methods = ', '.join([feature.identifier for feature in class_def])
-            logger.info(class_def.class_type, '-', methods)
+            logger.info(methods)
 
     # Otherwise, print out the errors
     else:
