@@ -13,6 +13,7 @@ def create_insensitive_regex_group(strings):
 
 # Base token class that stores the value, line number, and column
 class BaseToken:
+    name = ''
     regex = ''
 
     def __init__(self, value, line, column):
@@ -33,6 +34,7 @@ class BaseToken:
 # true or false with every character but the first being case-insensitive
 # (t(r|R)(u|U)(e|E)|f(a|A)(l|L)(s|S)(e|E))
 class BooleanToken(BaseToken):
+    name = 'bool'
     regex = r'(t{}|f{})'.format(create_insensitive_regex('rue'), create_insensitive_regex('alse'))
 
     # Case-insensitive
@@ -40,16 +42,11 @@ class BooleanToken(BaseToken):
         return super().val().lower()
 
 
-# Token for any reserved cool keywords
-# (self|SELF_TYPE)
-class ReservedToken(BaseToken):
-    regex = r'(self|SELF_TYPE)'
-
-
 # Token for a type identifier
 # Letters, digits, underscores, must start with capital letter
 # [A-Z][0-9a-zA-Z_]*
 class TypeIdToken(BaseToken):
+    name = 'type identifier'
     regex = r'[A-Z][0-9a-zA-Z_]*'
 
 
@@ -57,6 +54,7 @@ class TypeIdToken(BaseToken):
 # Letters, digits, underscores, must start with lowercase letter
 # [a-z][0-9a-zA-Z_]*
 class ObjectIdToken(BaseToken):
+    name = 'object identifier'
     regex = r'[a-z][0-9a-zA-Z_]*'
 
 
@@ -64,6 +62,7 @@ class ObjectIdToken(BaseToken):
 # Anything that's not \0
 # Strings are found in double-quotes, but we don't want to capture these
 class StringToken(BaseToken):
+    name = 'string'
     regex = r'(?!(\0))(?:")(.|\\\n)*?(?:")'
 
 
@@ -71,18 +70,21 @@ class StringToken(BaseToken):
 # Groups of characters of 0-9
 # [0-9]+
 class IntegerToken(BaseToken):
+    name = 'integer'
     regex = r'\d+'
 
 
 # Token to capture any whitespace
 # ascii 32, \f \t \v \r
 class WhitespaceToken(BaseToken):
+    name = 'whitespace'
     regex = r'[ \f\t\v\r]+'
 
 
 # Token to capture newline tokens
 # \n
 class NewlineToken(BaseToken):
+    name = 'newline'
     regex = r'\n'
 
 
@@ -90,6 +92,7 @@ class NewlineToken(BaseToken):
 # case-insensitive class, else, fi, if, in, inherits, let, loop, pool, then, while, case, esac, new, of
 # (?i)(class|inherits|else|fi|if|in|let|loop|pool|then|while|case|esac|new|of)
 class KeywordToken(BaseToken):
+    name = 'keyword'
     regex = create_insensitive_regex_group(['class', 'inherits', 'else', 'fi', 'if', 'in', 'let', 'loop', 'pool',
                                             'then', 'while', 'case', 'esac', 'new', 'of'])
 
@@ -101,72 +104,85 @@ class KeywordToken(BaseToken):
 # Token to match any of the unary operators
 # (~|isvoid|not)
 class UnaryOperatorToken(BaseToken):
+    name = 'unary'
     regex = '(~|{}|{})'.format(create_insensitive_regex('isvoid'), create_insensitive_regex('not'))
 
 
 # Token to match any of the dispatch tokens
 # [\.@]
 class DispatchToken(BaseToken):
+    name = 'dispatch'
     regex = r'[\.@]'
 
 
 # Token to match an assignment operation
 # <-
 class AssignmentToken(BaseToken):
+    name = '<-'
     regex = '<-'
 
 
 # Token that matches any binary operators
 # [+\-*/]
 class BinaryOperatorToken(BaseToken):
+    name = 'binary'
     regex = r'[+\-*/]'
 
 
 # Token to match any comparators
 # (<=|<|=)
 class ComparatorToken(BaseToken):
+    name = 'comparator'
     regex = r'(<=|<|=)'
 
 
 # Token for anything that doesn't match
 # Match anything that's not whitespace
 class UnknownToken(BaseToken):
+    name = 'unknown'
     regex = r'\S+'
 
 
 # Token for any forms of brackets
 # [\(\){}]
 class BracketToken(BaseToken):
+    name = 'bracket'
     regex = r'[\(\){}]'
 
 
 # Token to match a colon
 class ColonToken(BaseToken):
+    name = ':'
     regex = r':'
 
 
 # Token to match a semi-colon
 class SemiColonToken(BaseToken):
+    name = ';'
     regex = r';'
 
 
 # Token to match => used in a case statement
 class ArrowToken(BaseToken):
+    name = '=>'
     regex = r'=>'
 
 
 # Token to match comma
 class CommaToken(BaseToken):
+    name = ','
     regex = r','
 
 
 # Token to match double quotes
 class DoubleQuoteToken(BaseToken):
+    name = '"'
     regex = r'"'
 
 
 # Token to represent the end of file
 class EOFToken(BaseToken):
+    name = 'EOF'
     pass
 
 

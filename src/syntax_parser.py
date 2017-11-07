@@ -1,5 +1,6 @@
 from tokens import *
 from ast import *
+import logger
 
 
 # Error class for general parse errors
@@ -12,7 +13,7 @@ class ParseError(Exception):
 
 
 # Iterator wrapper that allows looking ahead at the next item
-class PeekableIterator:
+class LookaheadIterator:
     def __init__(self, lst):
         self._iterator = iter(lst)
         self._lookahead_val = None
@@ -38,80 +39,94 @@ class PeekableIterator:
         return self._current_val
 
 
-errors = [],  # Errors encountered
-_panic = False  # Panic mode flag
+# ~ May the lord forgive my use of globals ~
+errors = []     # Errors encountered
 
 
 # Entry point for syntax parsing
 def parse(token_lst):
     # Setup iterator with lookahead functionality
-    iterator = PeekableIterator(token_lst)
+    iterator = LookaheadIterator(token_lst)
 
     ast = program(iterator)
 
-    return ast, []
+    return ast, errors
 
 
 # Parse and check productions, by choosing the correct production using the first+/predict set in `predict_dict`
 def parse_next(predict_dict, token_iter, name):
     # global _panic
+
     next_token = token_iter.lookahead()
+
+    # logger.info('Looking for {}'.format(next_token))
+    # Grab the production that corresponds to whenever the token is in a certain predict set
+    production_tuple = production_from_predict_dict(predict_dict, next_token)
+
+    # If the token is in none of the first+/predict sets for any production in the dict, error
+    if production_tuple is False:
+        raise ParseError(next_token, None, None,
+                         'No matches for "{}" in non-terminal "{}"'.format(next_token.val(), name))
+
+    # Empty productions result in moving on, and exiting the production
+    elif production_tuple is None:
+        # logger.header('Backing out from non-terminal (e)', name)
+        return []
+
+    # Pull out next production as a list of terminals and non-terminals
+    production, func = production_tuple
 
     # logger.header('Entering non-terminal', name)
 
+    tree = []
+    for terminal in production:
+        try:
+            tree.append(parse_terminal(terminal, token_iter))
+        except ParseError as err:
+            handle_error(err, token_iter, predict_dict, production, terminal)
+
+    # If there are errors, stop building the AST, it's probably gonna be broke :(
+    return func(tree) if not errors else []
+
+
+# Given a predict dictionary, and a token, determine which production to use, or None if there is no match
+def production_from_predict_dict(predict_dict, token):
     # Try all the predict sets for the production/non-terminal
     for predict_set in predict_dict:
-        try:
-            # Check if lookahead token is in the first+ set, will throw an exception if not
-            next(required_token for required_token in predict_set if compare_token(next_token, required_token))
+        if token_in_set(token, predict_set):
+            return predict_dict[predict_set]
 
-            # Pull next production and lambda tuple
-            production_tuple = predict_dict[predict_set]
-            # logger.info('Looking for {}'.format(next_token))
+    # No match :(
+    return False
 
-            # Empty productions result in consuming the token and moving on
-            if production_tuple is None:
-                # logger.header('Backing out from non-terminal (e)', name)
-                return []
 
-            # Pull out next production as a list of terminals and non-terminals
-            # Func describes what the production will return
-            production, func = production_tuple
+# Returns boolean for whether the given token exists in the predict set
+def token_in_set(token, predict_set):
+    try:
+        next(required_token for required_token in predict_set if compare_token(token, required_token))
+        return True
 
-            tree = []
-            for terminal in production:
-                try:
-                    tree.append(parse_terminal(terminal, token_iter))
-                except ParseError as err:
-                    # errors.append(err.message)
-                    print(err.message, 't', token_iter.lookahead())
-
-            # Stop collecting classes and methods if there are errors
-            # if not errors:
-            #     collect_classes(name, tree)
-
-            return func(tree)
-
-        # No more tokens left in the stream
-        except StopIteration:
-            continue
-
-    raise ParseError(next_token, BaseToken, None,
-                     'No matches for {} in non-terminal {}'.format(next_token, name))
+    except StopIteration:
+        return False
 
 
 # Go a possible terminals/non-terminal, from a production
 def parse_terminal(terminal, token_iter):
     # A tuple means it's a terminal, so consume and compare
     if isinstance(terminal, tuple):
-        token = token_iter.next()
+        token = token_iter.lookahead()
 
-        if not compare_token(token, terminal):
+        # If the token is as expected, move forward
+        if compare_token(token, terminal):
+            token_iter.next()
+
+        # Otherwise, raise your hands in the air ¯\_(-_-)_/¯
+        else:
             terminal_type, terminal_value = terminal
 
-            raise ParseError(token, terminal_type, terminal_value, 'Unexpected symbol "{}", expected {}'.format(
+            raise ParseError(token, terminal_type.name, terminal_value, 'Unexpected symbol "{}", expected "{}"'.format(
                 token.val(),
-                terminal_value or terminal_type.__name__))
+                terminal_value or terminal_type.name))
 
         return token.val()
 
@@ -135,14 +150,64 @@ def compare_token(token, required):
 def nonterminal_decorator(production):
     def wrapper(token_iter):
         try:
+            #TODO remove __name__
             return parse_next(production(), token_iter, production.__name__)
         except ParseError as err:
-            if not _panic:
-                # errors.append(err.message)
-                print('dec', err.message, token_iter.current())
+            handle_error(err, token_iter, production())
 
     return wrapper
 
+
+# 3 cases when you know the production, or no production with a predict_dict size of 1
+# missing token - try next terminal in production with current token
+# extra token - try current terminal production with next token
+# malformed current token - try next production with next token
+
+# When you're not in production/terminal = None
+# Panic, keep discarding tokens until the production works
+
+# Try each of these strategies?
+
+#
+
+def handle_error(err, token_iter, predict_dict, production=None, terminal=None):
+    print('entering', err)
+    errors.append(err.message)
+    next_token = token_iter.lookahead()
+
+    # If the next token is the end of file,
+    if isinstance(next_token, EOFToken):
+        return
+
+    panic_synchronise(token_iter, predict_dict)
+
+    print('matched again ' + str(token_iter.lookahead()))
+    parse_next(predict_dict, token_iter, '')
+
+    # # Not in any particular production
+    # while panic:
+    #     next_token = token_iter.lookahead()
+    #     print('trying', next_token)
+    #
+    #     production_tuple = production_from_predict_dict(predict_dict, next_token)
+    #     if production_tuple is False:
+    #         token_iter.next()
+    #     else:
+    #         print('matched again ' + str(token_iter.lookahead()))
+    #         panic = False
+    #         parse_next(predict_dict, token_iter, '')
+
+
+# Throws away tokens until back in sync with production
+def panic_synchronise(token_iter, predict_dict):
+    while production_from_predict_dict(predict_dict, token_iter.lookahead()) is False:
+        next_token = token_iter.next()
+
+        # If the next token is the end of file,
+        if isinstance(next_token, EOFToken):
+            return
+
+    logger.success('matched again ' + str(token_iter.lookahead()))
 
 #####################################################################################
 # Each of the following productions will be commented with a tabular list, denoting:#

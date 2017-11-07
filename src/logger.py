@@ -15,10 +15,10 @@ def info(*string, end='\n'):
 
 
 def error(*string, end='\n'):
-    sys.stderr.write(BackgroundColours.FAIL)
-    sys.stderr.write(' '.join(string))
-    sys.stderr.write(BackgroundColours.ENDC)
-    sys.stderr.write(end)
+    sys.stdout.write(BackgroundColours.FAIL)
+    sys.stdout.write(' '.join(string))
+    sys.stdout.write(BackgroundColours.ENDC)
+    sys.stdout.write(end)
 
 
 def success(*string, end='\n'):
