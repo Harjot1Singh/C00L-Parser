@@ -13,13 +13,14 @@ def parse(path):
         program_string = file.read()
 
     # Lex character-by-character
-    tokens, errors = tokenise(program_string)
+    tokens, lex_errors = tokenise(program_string)
 
     # Parse
-    classes, errors = syntax_parser.parse(tokens)
+    classes, parse_errors = syntax_parser.parse(tokens)
 
     # Print out classes and method names if there were no errors
-    if not errors:
+    all_errors = lex_errors + parse_errors
+    if not all_errors:
         logger.success('No errors found')
         for class_name in classes:
             logger.info(class_name, '-', ', '.join(classes[class_name]))
@@ -27,7 +28,7 @@ def parse(path):
     # Otherwise, print out the errors
     else:
         logger.error('Errors found')
-        logger.info('\n'.join(errors))
+        logger.info('\n'.join(all_errors))
 
 
 # Application entry point
