@@ -140,7 +140,6 @@ def compare_token(token, required):
 def nonterminal_decorator(production):
     def wrapper(token_iter):
         try:
-            # TODO remove __name__
             return parse_next(production(), token_iter)
         except ParseError as err:
             handle_error(err, token_iter, production())
