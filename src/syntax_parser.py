@@ -1,12 +1,10 @@
 from tokens import *
 from ast import *
-import logger
 
 
 # Error class for general parse errors
 class ParseError(Exception):
-    def __init__(self, token, expected_token, expected_value, message):
-        self.message = '[{}:{}] {}'.format(token.line, token.column, message)
+    def __init__(self, token, expected_token, expected_value):
         self.token = token
         self.expected_token = expected_token
         self.expected_value = expected_value
@@ -40,7 +38,7 @@ class LookaheadIterator:
 
 
 # ~ May the lord forgive my use of globals ~
-errors = []     # Errors encountered
+errors = []  # Errors encountered
 
 
 # Entry point for syntax parsing
@@ -54,36 +52,30 @@ def parse(token_lst):
 
 
 # Parse and check productions, by choosing the correct production using the first+/predict set in `predict_dict`
-def parse_next(predict_dict, token_iter, name):
-    # global _panic
+def parse_next(predict_dict, token_iter):
 
     next_token = token_iter.lookahead()
 
-    # logger.info('Looking for {}'.format(next_token))
     # Grab the production that corresponds to whenever the token is in a certain predict set
     production_tuple = production_from_predict_dict(predict_dict, next_token)
 
     # If the token is in none of the first+/predict sets for any production in the dict, error
     if production_tuple is False:
-        raise ParseError(next_token, None, None,
-                         'No matches for "{}" in non-terminal "{}"'.format(next_token.val(), name))
+        raise ParseError(next_token, None, None)
 
     # Empty productions result in moving on, and exiting the production
     elif production_tuple is None:
-        # logger.header('Backing out from non-terminal (e)', name)
         return []
 
     # Pull out next production as a list of terminals and non-terminals
     production, func = production_tuple
 
-    # logger.header('Entering non-terminal', name)
-
     tree = []
-    for terminal in production:
+    for index, terminal in enumerate(production):
         try:
             tree.append(parse_terminal(terminal, token_iter))
         except ParseError as err:
-            handle_error(err, token_iter, predict_dict, production, terminal)
+            handle_error(err, token_iter, predict_dict, production, index)
 
     # If there are errors, stop building the AST, it's probably gonna be broke :(
     return func(tree) if not errors else []
@@ -124,9 +116,7 @@ def parse_terminal(terminal, token_iter):
         else:
             terminal_type, terminal_value = terminal
 
-            raise ParseError(token, terminal_type.name, terminal_value, 'Unexpected symbol "{}", expected "{}"'.format(
-                token.val(),
-                terminal_value or terminal_type.name))
+            raise ParseError(token, terminal_type.name, terminal_value)
 
         return token.val()
 
@@ -150,8 +140,8 @@ def compare_token(token, required):
 def nonterminal_decorator(production):
     def wrapper(token_iter):
         try:
-            #TODO remove __name__
-            return parse_next(production(), token_iter, production.__name__)
+            # TODO remove __name__
+            return parse_next(production(), token_iter)
         except ParseError as err:
             handle_error(err, token_iter, production())
 
@@ -165,49 +155,97 @@ def nonterminal_decorator(production):
 
 # When you're not in production/terminal = None
 # Panic, keep discarding tokens until the production works
-
-# Try each of these strategies?
-
-#
-
-def handle_error(err, token_iter, predict_dict, production=None, terminal=None):
-    print('entering', err)
-    errors.append(err.message)
+def handle_error(err, token_iter, predict_dict, production=None, terminal_index=None):
     next_token = token_iter.lookahead()
 
-    # If the next token is the end of file,
+    # If the next token is the end of file, don't bother recovering, for the end is here
     if isinstance(next_token, EOFToken):
-        return
+        return premature_eof_error(next_token, err.expected_value or err.expected_token)
 
-    panic_synchronise(token_iter, predict_dict)
+    # Mid-production, known terminal
+    if terminal_index is not None:
+        # Check if a token was missed in the current production, but this doesn't check higher productions :(
+        if (missed_terminal_synchronise(token_iter, production, terminal_index) or
+                panic_synchronise_terminal(token_iter, production[terminal_index])):
 
-    print('matched again ' + str(token_iter.lookahead()))
-    parse_next(predict_dict, token_iter, '')
+            # Finish off the production
+            remaining_production = production[terminal_index + 1:]
+            for terminal in remaining_production:
+                parse_terminal(terminal, token_iter)
 
-    # # Not in any particular production
-    # while panic:
-    #     next_token = token_iter.lookahead()
-    #     print('trying', next_token)
-    #
-    #     production_tuple = production_from_predict_dict(predict_dict, next_token)
-    #     if production_tuple is False:
-    #         token_iter.next()
-    #     else:
-    #         print('matched again ' + str(token_iter.lookahead()))
-    #         panic = False
-    #         parse_next(predict_dict, token_iter, '')
+            return []
+
+    # Not in any production, attempt to synchronise with any terminal in the same productions
+    panic_synchronise_dict(token_iter, predict_dict)
+    parse_next(predict_dict, token_iter)
+
+
+# Throws away tokens until back in sync with known terminal/non-terminal
+def panic_synchronise_terminal(token_iter, terminal):
+    while True:
+        try:
+            parse_terminal(terminal, token_iter)
+            return True
+        except ParseError as err:
+            unexpected_symbol_error(token_iter.lookahead())
+
+            next_token = token_iter.next()
+            # If the next token is the end of file, don't bother recovering, for the end is here
+            if isinstance(next_token, EOFToken):
+                return False
+
+
+# Checks to see if the the token is actually the next terminal
+def missed_terminal_synchronise(token_iter, production, terminal_index):
+    try:
+        # Try using the next terminal/non-terminal in the production
+        next_terminal = production[terminal_index + 1]
+        parse_terminal(next_terminal, token_iter)
+        missing_symbol_error(production[terminal_index], token_iter.current())
+        return True
+    except (IndexError, ParseError):
+        return False
 
 
 # Throws away tokens until back in sync with production
-def panic_synchronise(token_iter, predict_dict):
+def panic_synchronise_dict(token_iter, predict_dict):
     while production_from_predict_dict(predict_dict, token_iter.lookahead()) is False:
+        unexpected_symbol_error(token_iter.lookahead())
+
         next_token = token_iter.next()
 
-        # If the next token is the end of file,
+        # If the next token is the end of file, don't bother recovering, for the end is here
         if isinstance(next_token, EOFToken):
             return
 
-    logger.success('matched again ' + str(token_iter.lookahead()))
+
+# Handles the message for unexpected symbols
+def unexpected_symbol_error(token, expected=None):
+    if expected:
+        message = '[{}:{}] Unexpected symbol {}, expected {}'.format(token.line, token.column, token.val(), expected)
+    else:
+        message = '[{}:{}] Unexpected symbol {}'.format(token.line, token.column, token.val())
+
+    errors.append(message)
+
+
+# Handles the message for premature EOFs
+def premature_eof_error(token, expected):
+    if expected:
+        message = '[{}:{}] Expected "{}", but reached EOF'.format(token.line, token.column, expected)
+    else:
+        message = '[{}:{}] Premature EOF'.format(token.line, token.column)
+
+    errors.append(message)
+
+
+# Handles the message for missing symbols
+def missing_symbol_error(terminal, token):
+    token_type, token_val = terminal
+
+    message = '[{}:{}] Missing {}'.format(token.line, token.column, token_val or token_type.name)
+    errors.append(message)
+
 
 #####################################################################################
 # Each of the following productions will be commented with a tabular list, denoting:#
@@ -384,7 +422,7 @@ def expr():
             (KeywordToken, 'new'),
             (BracketToken, '{'),
             (BracketToken, '('),
-            (BooleanToken, None)}): ([not_term, expr_rr], lambda x: None )
+            (BooleanToken, None)}): ([not_term, expr_rr], lambda x: None)
     }
 
 
